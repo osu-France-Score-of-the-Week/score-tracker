@@ -1,0 +1,56 @@
+name: 'go-api'
+
+services:
+  score-tracker-database:
+    build:
+      context: .
+      dockerfile: ./build/database/Dockerfile
+    image: score-tracker-database
+    container_name: score-tracker-database
+    restart: always
+    volumes:
+      - type: volume
+        source: score-tracker-database
+        target: /var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+      - POSTGRES_DB=${DB_NAME}
+      - POSTGRES_USER=${DB_USER}
+    networks:
+      - score-tracker-network
+  score-tracker-golang:
+    build:
+      context: .
+      dockerfile: ./build/go/Dockerfile
+    image: score-tracker-golang
+    container_name: score-tracker-golang
+    command: sh -c "go mod tidy && cd src/ && gow run main.go"
+    restart: always
+    volumes:
+      - type: bind
+        source: .
+        target: /app/
+    ports:
+      - "8080:8080"
+    environment:
+      - DB_HOST=${DB_HOST}
+      - DB_PORT=${DB_PORT}
+      - DB_USER=${DB_USER}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - DB_NAME=${DB_NAME}
+      - SECRET_KEY=${SECRET_KEY}
+    depends_on:
+      - score-tracker-database
+    networks:
+      - score-tracker-network
+
+volumes:
+  score-tracker-database:
+    name: score-tracker-database
+
+networks:
+  score-tracker-network:
+    name: score-tracker-network
+    driver: bridge
