@@ -3,7 +3,7 @@ package main
 import (
 	"log"
 	"score-tracker/src/database"
-	middlewares "score-tracker/src/middleware"
+	middlewares "score-tracker/src/middlewares"
 
 	"github.com/gin-gonic/gin"
 )
