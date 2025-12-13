@@ -23,11 +23,9 @@ func RetrieveScores(interval time.Duration, stopChan <-chan struct{}, scoresChan
 					continue
 				}
 
-				go func() {
-					for _, score := range recentScores.Scores {
-						scoresChan <- score
-					}
-				}()
+				for _, score := range recentScores.Scores {
+					scoresChan <- score
+				}
 
 				cursor = &recentScores.Cursor
 
