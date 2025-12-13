@@ -2,9 +2,10 @@ package main
 
 import (
 	"log"
-	"score-tracker/src/database"
-	"score-tracker/src/middlewares"
-	"score-tracker/src/models"
+	"score-tracker/database"
+	"score-tracker/jobs"
+	"score-tracker/middlewares"
+	"score-tracker/models"
 
 	"github.com/gin-gonic/gin"
 )
@@ -21,6 +22,8 @@ func main() {
 	r := gin.Default()
 
 	r.Use(middlewares.DatabaseMiddleware(database.DB))
+
+	jobs.CreateJobs(database.DB)
 
 	r.Run(":8080")
 }
