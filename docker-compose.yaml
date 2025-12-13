@@ -26,11 +26,11 @@ services:
       dockerfile: ./build/go/Dockerfile
     image: score-tracker-golang
     container_name: score-tracker-golang
-    command: sh -c "go mod tidy && cd src/ && gow run main.go"
+    command: sh -c "go mod tidy && gow run main.go"
     restart: always
     volumes:
       - type: bind
-        source: .
+        source: ./src
         target: /app/
     ports:
       - "8080:8080"
