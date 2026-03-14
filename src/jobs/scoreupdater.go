@@ -7,7 +7,7 @@ import (
 	"time"
 )
 
-func RetrieveScores(interval time.Duration, stopChan <-chan struct{}, scoresChan chan<- models.OsuScore) {
+func RetrieveScores(interval time.Duration, stopChan <-chan struct{}, filterChan chan<- models.OsuScore) {
 	go func() {
 		ticker := time.NewTicker(interval)
 		defer ticker.Stop()
@@ -24,7 +24,7 @@ func RetrieveScores(interval time.Duration, stopChan <-chan struct{}, scoresChan
 				}
 
 				for _, score := range recentScores.Scores {
-					scoresChan <- score
+					filterChan <- score
 				}
 
 				cursor = &recentScores.Cursor

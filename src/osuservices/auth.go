@@ -40,10 +40,17 @@ func getOsuToken() (string, error) {
 	req.Header.Set("Accept", "application/json")
 
 	resp, err := client.Do(req)
+
 	if err != nil {
 		return "", err
 	}
-	defer resp.Body.Close()
+
+	defer func(Body io.ReadCloser) {
+		err := Body.Close()
+		if err != nil {
+			fmt.Printf("Error closing response body: %v\n", err)
+		}
+	}(resp.Body)
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
