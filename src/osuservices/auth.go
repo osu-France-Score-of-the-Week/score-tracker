@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"os"
 	"score-tracker/models"
 	"strings"
 	"time"
@@ -14,9 +15,15 @@ import (
 func getOsuToken() (string, error) {
 	client := &http.Client{Timeout: 10 * time.Second}
 
+	clientID := os.Getenv("OSU_CLIENT_ID")
+	clientSecret := os.Getenv("OSU_CLIENT_SECRET")
+	if clientID == "" || clientSecret == "" {
+		return "", fmt.Errorf("missing OSU_CLIENT_ID or OSU_CLIENT_SECRET environment variable")
+	}
+
 	form := url.Values{}
-	form.Set("client_id", "25310")
-	form.Set("client_secret", "8KcttqiVcSyY6fvGBWxwqm52fe8EziV2oUsrOzdB")
+	form.Set("client_id", clientID)
+	form.Set("client_secret", clientSecret)
 	form.Set("grant_type", "client_credentials")
 	form.Set("scope", "public")
 
@@ -33,10 +40,17 @@ func getOsuToken() (string, error) {
 	req.Header.Set("Accept", "application/json")
 
 	resp, err := client.Do(req)
+
 	if err != nil {
 		return "", err
 	}
-	defer resp.Body.Close()
+
+	defer func(Body io.ReadCloser) {
+		err := Body.Close()
+		if err != nil {
+			fmt.Printf("Error closing response body: %v\n", err)
+		}
+	}(resp.Body)
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {

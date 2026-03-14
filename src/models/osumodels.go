@@ -35,3 +35,20 @@ type ModSettings struct {
 	Name  string `json:"name"`
 	Value any    `json:"value"`
 }
+
+type UsersResponse struct {
+	Users []User `json:"users"`
+}
+
+type User struct {
+	ID         uint       `json:"id"`
+	Username   string     `json:"username"`
+	Country    string     `json:"country_code"`
+	Statistics Statistics `json:"statistics"`
+}
+
+type Statistics struct {
+	GlobalRank  *int     `json:"global_rank"`
+	CountryRank *int     `json:"country_rank"`
+	Pp          *float64 `json:"pp"`
+}
