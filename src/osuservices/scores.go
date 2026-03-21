@@ -19,6 +19,7 @@ func GetRecentScores(cursor *string) (models.RecentScoresResponse, error) {
 	if cursor != nil {
 		q := req.URL.Query()
 		q.Add("cursor_string", *cursor)
+		q.Add("ruleset", "osu")
 		req.URL.RawQuery = q.Encode()
 	}
 

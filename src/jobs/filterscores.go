@@ -50,7 +50,9 @@ func checkPlayersFromScores(scores []models.Score, scoresChan chan<- models.Scor
 
 	fmt.Printf("Found %d players\n", len(players.Users))
 	for _, player := range players.Users {
-		if player.Country == "FR" {
+		if applyFilters(player, []PlayerFilter{isFrench, isTop10k}) {
+			fmt.Println("Player passed filters:", player.Username)
+			fmt.Println("statistics:", player.Statistics)
 			for _, score := range scores {
 				if score.PlayerId == player.ID {
 					scoresChan <- score
@@ -58,4 +60,23 @@ func checkPlayersFromScores(scores []models.Score, scoresChan chan<- models.Scor
 			}
 		}
 	}
+}
+
+type PlayerFilter func(player models.User) bool
+
+func isFrench(player models.User) bool {
+	return player.Country == "FR"
+}
+
+func isTop10k(player models.User) bool {
+	return player.Statistics.GlobalRank <= 10000 && player.Statistics.GlobalRank > 0
+}
+
+func applyFilters(player models.User, filters []PlayerFilter) bool {
+	for _, filter := range filters {
+		if !filter(player) {
+			return false
+		}
+	}
+	return true
 }
