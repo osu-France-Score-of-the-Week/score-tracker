@@ -1,12 +1,16 @@
 package jobs
 
 import (
-	"fmt"
 	"score-tracker/models"
 	"score-tracker/osuservices"
+	"score-tracker/repositories"
+
+	"gorm.io/gorm"
 )
 
-func FilterScores(stopChan <-chan struct{}, filterChan <-chan models.OsuScore, scoresChan chan<- models.Score) {
+func FilterScores(stopChan <-chan struct{}, filterChan <-chan models.OsuScore, scoresChan chan<- models.Score, db *gorm.DB) {
+	playerRepo := repositories.NewPlayerRepository(db)
+
 	batch := make([]models.Score, 0, 50)
 
 	go func() {
@@ -22,7 +26,7 @@ func FilterScores(stopChan <-chan struct{}, filterChan <-chan models.OsuScore, s
 
 				if len(batch) == 50 {
 					//scoresChan <- mappedScore
-					checkPlayersFromScores(batch, scoresChan)
+					checkPlayersFromScores(batch, scoresChan, playerRepo)
 					batch = batch[:0] // Clear the batch
 				}
 
@@ -33,7 +37,8 @@ func FilterScores(stopChan <-chan struct{}, filterChan <-chan models.OsuScore, s
 	}()
 }
 
-func checkPlayersFromScores(scores []models.Score, scoresChan chan<- models.Score) {
+func checkPlayersFromScores(scores []models.Score, scoresChan chan<- models.Score, playerRepo *repositories.PlayerRepository) {
+
 	playerIds := make([]uint, 0, len(scores))
 	for _, score := range scores {
 		playerIds = append(playerIds, score.PlayerId)
@@ -48,11 +53,14 @@ func checkPlayersFromScores(scores []models.Score, scoresChan chan<- models.Scor
 		return
 	}
 
-	fmt.Printf("Found %d players\n", len(players.Users))
 	for _, player := range players.Users {
 		if applyFilters(player, []PlayerFilter{isFrench, isTop10k}) {
-			fmt.Println("Player passed filters:", player.Username)
-			fmt.Println("statistics:", player.Statistics)
+			newPlayer := models.MapOsuUserToModel(player)
+			err := playerRepo.Update(&newPlayer)
+			if err != nil {
+				return
+			}
+
 			for _, score := range scores {
 				if score.PlayerId == player.ID {
 					scoresChan <- score

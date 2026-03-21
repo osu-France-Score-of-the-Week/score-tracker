@@ -51,7 +51,7 @@ type User struct {
 }
 
 type Statistics struct {
-	GlobalRank int     `json:"global_rank"`
+	GlobalRank uint    `json:"global_rank"`
 	Pp         float64 `json:"pp"`
 }
 

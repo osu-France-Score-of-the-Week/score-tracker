@@ -16,7 +16,7 @@ func RetrieveScores(interval time.Duration, stopChan <-chan struct{}, filterChan
 		for {
 			select {
 			case <-ticker.C:
-				fmt.Println("Updating recent scores...")
+				// fmt.Println("Updating recent scores...")
 				recentScores, err := osuservices.GetRecentScores(cursor)
 				if err != nil {
 					fmt.Println("Error updating recent scores:", err)

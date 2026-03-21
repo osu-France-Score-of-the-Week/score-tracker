@@ -2,12 +2,9 @@ package models
 
 import (
 	"encoding/json"
-
-	"gorm.io/gorm"
 )
 
 type Score struct {
-	gorm.Model
 	ScoreId    uint `gorm:"primaryKey"`
 	Accuracy   float64
 	BeatmapId  uint

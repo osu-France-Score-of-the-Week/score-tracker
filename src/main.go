@@ -15,7 +15,7 @@ func main() {
 		log.Fatal("Failed to connect to database:", err)
 	}
 
-	if err := database.DB.AutoMigrate(&models.Score{}); err != nil {
+	if err := database.DB.AutoMigrate(&models.Player{}, &models.Score{}); err != nil {
 		log.Fatal("Failed to migrate database:", err)
 	}
 
