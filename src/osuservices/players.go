@@ -55,5 +55,7 @@ func GetPlayers(playerIds []uint) (models.UsersResponse, error) {
 		return models.UsersResponse{}, err
 	}
 
+	fmt.Printf("Fetched %d players from osu API\n", len(players.Users))
+
 	return players, nil
 }

@@ -30,8 +30,9 @@ type OsuScore struct {
 	UserID     uint           `json:"user_id"`
 }
 
-type Mod struct {
-	Acronym string `json:"acronym"`
+type OsuMod struct {
+	Acronym  string         `json:"acronym"`
+	Settings map[string]any `json:"settings"`
 }
 
 type ModSettings struct {
@@ -76,4 +77,28 @@ func (u *User) UnmarshalJSON(data []byte) error {
 	}
 
 	return nil
+}
+
+type OsuBeatmap struct {
+	ID               uint          `json:"id"`
+	Version          string        `json:"version"`
+	DifficultyRating float64       `json:"difficulty_rating"`
+	Beatmapset       OsuBeatmapset `json:"beatmapset"`
+}
+
+type OsuBeatmapset struct {
+	ID      uint   `json:"id"`
+	Title   string `json:"title"`
+	Creator string `json:"creator"`
+	Artist  string `json:"artist"`
+	Status  string `json:"status"`
+}
+
+type OsuBeatmapAttributes struct {
+	Attributes OsuAttributes `json:"attributes"`
+}
+
+type OsuAttributes struct {
+	StarRating float64 `json:"star_rating"`
+	MaxCombo   uint    `json:"max_combo"`
 }

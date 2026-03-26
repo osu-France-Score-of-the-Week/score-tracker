@@ -4,6 +4,7 @@ import (
 	"score-tracker/models"
 	"score-tracker/osuservices"
 	"score-tracker/repositories"
+	"time"
 
 	"gorm.io/gorm"
 )
@@ -27,6 +28,7 @@ func FilterScores(stopChan <-chan struct{}, filterChan <-chan models.OsuScore, s
 				if len(batch) == 50 {
 					//scoresChan <- mappedScore
 					checkPlayersFromScores(batch, scoresChan, playerRepo)
+					time.Sleep(2000 * time.Millisecond)
 					batch = batch[:0] // Clear the batch
 				}
 
@@ -41,10 +43,10 @@ func checkPlayersFromScores(scores []models.Score, scoresChan chan<- models.Scor
 
 	playerIds := make([]uint, 0, len(scores))
 	for _, score := range scores {
-		playerIds = append(playerIds, score.PlayerId)
+		playerIds = append(playerIds, score.PlayerID)
 	}
 
-	var players, err = osuservices.GetPlayers(playerIds)
+	players, err := osuservices.GetPlayers(playerIds)
 	if err != nil {
 		return
 	}
@@ -62,7 +64,7 @@ func checkPlayersFromScores(scores []models.Score, scoresChan chan<- models.Scor
 			}
 
 			for _, score := range scores {
-				if score.PlayerId == player.ID {
+				if score.PlayerID == player.ID {
 					scoresChan <- score
 				}
 			}

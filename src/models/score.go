@@ -1,29 +1,67 @@
 package models
 
 import (
+	"database/sql/driver"
 	"encoding/json"
 )
 
 type Score struct {
-	ScoreId    uint `gorm:"primaryKey"`
+	ID         uint `gorm:"primaryKey"`
 	Accuracy   float64
-	BeatmapId  uint
+	BeatmapID  uint
 	EndedAt    int64
 	HasReplay  bool
 	MaxCombo   uint
-	Mods       string
+	Mods       Mods `gorm:"type:jsonb"`
 	Pp         float64
 	Rank       string
 	Statistics string
-	PlayerId   uint
+	PlayerID   uint
+}
+
+type Mods []Mod
+
+func (m Mods) Value() (driver.Value, error) {
+	if m == nil {
+		return []byte("null"), nil
+	}
+	b, err := json.Marshal(m)
+	if err != nil {
+		return nil, err
+	}
+	return b, nil
+}
+
+func (m *Mods) Scan(value interface{}) error {
+	if value == nil {
+		*m = Mods{}
+		return nil
+	}
+
+	var bytes []byte
+	switch v := value.(type) {
+	case string:
+		bytes = []byte(v)
+	case []byte:
+		bytes = v
+	default:
+		return nil
+	}
+
+	if len(bytes) == 0 {
+		*m = Mods{}
+		return nil
+	}
+
+	var out []Mod
+	if err := json.Unmarshal(bytes, &out); err != nil {
+		return err
+	}
+	*m = Mods(out)
+	return nil
 }
 
 func MapOsuScoreToModel(s OsuScore) (Score, error) {
-	modsJSON, err := json.Marshal(s.Mods)
-	if err != nil {
-		return Score{}, err
-	}
-
 	statsJSON, err := json.Marshal(s.Statistics)
 	if err != nil {
 		return Score{}, err
@@ -34,17 +72,27 @@ func MapOsuScoreToModel(s OsuScore) (Score, error) {
 		pp = *s.Pp
 	}
 
+	mods := Mods(s.Mods)
+	if mods == nil {
+		mods = Mods{}
+	}
+
 	return Score{
-		ScoreId:    s.ID,
+		ID:         s.ID,
 		Accuracy:   s.Accuracy,
-		BeatmapId:  s.BeatmapID,
+		BeatmapID:  s.BeatmapID,
 		EndedAt:    s.EndedAt.Unix(),
 		HasReplay:  s.HasReplay,
 		MaxCombo:   s.MaxCombo,
-		Mods:       string(modsJSON),
+		Mods:       mods,
 		Pp:         pp,
 		Rank:       s.Rank,
 		Statistics: string(statsJSON),
-		PlayerId:   s.UserID,
+		PlayerID:   s.UserID,
 	}, nil
+}
+
+type Mod struct {
+	Acronym  string                 `json:"acronym"`
+	Settings map[string]interface{} `json:"settings"`
 }
