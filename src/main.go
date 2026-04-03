@@ -21,6 +21,7 @@ func main() {
 		&models.BeatmapAttributes{},
 		&models.Beatmap{},
 		&models.Score{},
+		&models.Cursor{},
 	); err != nil {
 		log.Fatal("Failed to migrate database:", err)
 	}

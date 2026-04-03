@@ -14,7 +14,7 @@ func CreateJobs(db *gorm.DB) {
 	filterChan := make(chan models.OsuScore, 1000)
 	scoresChan := make(chan models.Score, 100)
 
-	RetrieveScores(20*time.Second, stopChanRetrieveScores, filterChan)
+	RetrieveScores(20*time.Second, stopChanRetrieveScores, filterChan, db)
 	FilterScores(stopChanFilter, filterChan, scoresChan, db)
 	CreateScores(scoresChan, stopChanCreateScores, db)
 }

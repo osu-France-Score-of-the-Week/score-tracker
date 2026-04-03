@@ -28,7 +28,7 @@ func FilterScores(stopChan <-chan struct{}, filterChan <-chan models.OsuScore, s
 				if len(batch) == 50 {
 					//scoresChan <- mappedScore
 					checkPlayersFromScores(batch, scoresChan, playerRepo)
-					time.Sleep(2000 * time.Millisecond)
+					time.Sleep(3000 * time.Millisecond)
 					batch = batch[:0] // Clear the batch
 				}
 
