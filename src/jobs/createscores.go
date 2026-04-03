@@ -66,8 +66,12 @@ func UpdateBeatmap(beatmapID uint, mods models.Mods, beatmapRepo *repositories.B
 		MaxCombo:   osuAttributes.Attributes.MaxCombo,
 	}
 
-	if err := beatmapAttributes.Update(&attributes); err != nil {
-		return err
+	_, err = beatmapAttributes.GetByBeatmapModsCombination(beatmapID, mods)
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return beatmapAttributes.Create(&attributes)
+		}
+		return nil
 	}
 
 	return nil

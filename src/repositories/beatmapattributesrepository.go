@@ -21,9 +21,10 @@ func (r *BeatmapAttributesRepository) Create(beatmapAttributes *models.BeatmapAt
 	return nil
 }
 
-func (r *BeatmapAttributesRepository) Update(beatmapAttributes *models.BeatmapAttributes) error {
-	if err := r.db.Save(beatmapAttributes).Error; err != nil {
-		return err
+func (r *BeatmapAttributesRepository) GetByBeatmapModsCombination(beatmapID uint, mods models.Mods) (*models.BeatmapAttributes, error) {
+	var beatmapAttributes models.BeatmapAttributes
+	if err := r.db.Where("beatmap_id = ? AND mods = ?", beatmapID, mods).First(&beatmapAttributes).Error; err != nil {
+		return nil, err
 	}
-	return nil
+	return &beatmapAttributes, nil
 }
