@@ -17,8 +17,10 @@ func GetRecentScores(cursor string) (models.RecentScoresResponse, error) {
 	}
 
 	q := req.URL.Query()
-	q.Add("cursor_string", cursor)
 	q.Add("ruleset", "osu")
+	if cursor != "" {
+		q.Add("cursor_string", cursor)
+	}
 	req.URL.RawQuery = q.Encode()
 
 	token, err := getOsuToken()
