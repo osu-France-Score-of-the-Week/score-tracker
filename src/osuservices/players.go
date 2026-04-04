@@ -8,7 +8,7 @@ import (
 	"score-tracker/models"
 )
 
-func GetPlayers(playerIds []uint) (models.UsersResponse, error) {
+func (s *OsuService) GetPlayers(playerIds []uint) (models.UsersResponse, error) {
 	client := &http.Client{}
 
 	req, err := http.NewRequest("GET", "https://osu.ppy.sh/api/v2/users", nil)
@@ -22,7 +22,7 @@ func GetPlayers(playerIds []uint) (models.UsersResponse, error) {
 		req.URL.RawQuery = q.Encode()
 	}
 
-	token, err := getOsuToken()
+	token, err := s.getValidOsuToken()
 	if err != nil {
 		return models.UsersResponse{}, err
 	}

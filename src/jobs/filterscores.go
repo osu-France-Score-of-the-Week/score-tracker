@@ -9,7 +9,7 @@ import (
 	"gorm.io/gorm"
 )
 
-func FilterScores(stopChan <-chan struct{}, filterChan <-chan models.OsuScore, scoresChan chan<- models.Score, db *gorm.DB) {
+func FilterScores(stopChan <-chan struct{}, filterChan <-chan models.OsuScore, scoresChan chan<- models.Score, db *gorm.DB, osuSvc *osuservices.OsuService) {
 	playerRepo := repositories.NewPlayerRepository(db)
 
 	batch := make([]models.Score, 0, 50)
@@ -27,7 +27,7 @@ func FilterScores(stopChan <-chan struct{}, filterChan <-chan models.OsuScore, s
 
 				if len(batch) == 50 {
 					//scoresChan <- mappedScore
-					checkPlayersFromScores(batch, scoresChan, playerRepo)
+					checkPlayersFromScores(batch, scoresChan, playerRepo, osuSvc)
 					time.Sleep(3000 * time.Millisecond)
 					batch = batch[:0] // Clear the batch
 				}
@@ -39,14 +39,14 @@ func FilterScores(stopChan <-chan struct{}, filterChan <-chan models.OsuScore, s
 	}()
 }
 
-func checkPlayersFromScores(scores []models.Score, scoresChan chan<- models.Score, playerRepo *repositories.PlayerRepository) {
+func checkPlayersFromScores(scores []models.Score, scoresChan chan<- models.Score, playerRepo *repositories.PlayerRepository, osuSvc *osuservices.OsuService) {
 
 	playerIds := make([]uint, 0, len(scores))
 	for _, score := range scores {
 		playerIds = append(playerIds, score.PlayerID)
 	}
 
-	players, err := osuservices.GetPlayers(playerIds)
+	players, err := osuSvc.GetPlayers(playerIds)
 	if err != nil {
 		return
 	}

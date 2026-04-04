@@ -9,7 +9,7 @@ import (
 	"gorm.io/gorm"
 )
 
-func CreateScores(scoresChan <-chan models.Score, stopChan <-chan struct{}, db *gorm.DB) {
+func CreateScores(scoresChan <-chan models.Score, stopChan <-chan struct{}, db *gorm.DB, osuSvc *osuservices.OsuService) {
 	scoreRepo := repositories.NewScoreRepository(db)
 	beatmapRepo := repositories.NewBeatmapRepository(db)
 	beatmapsetRepo := repositories.NewBeatmapsetRepository(db)
@@ -19,7 +19,7 @@ func CreateScores(scoresChan <-chan models.Score, stopChan <-chan struct{}, db *
 		for {
 			select {
 			case score := <-scoresChan:
-				err := UpdateBeatmap(score.BeatmapID, score.Mods, beatmapRepo, beatmapsetRepo, beatmapAttributes)
+				err := UpdateBeatmap(score.BeatmapID, score.Mods, beatmapRepo, beatmapsetRepo, beatmapAttributes, osuSvc)
 				if err != nil {
 					fmt.Println("Error updating beatmap:", err)
 					continue
@@ -38,8 +38,8 @@ func CreateScores(scoresChan <-chan models.Score, stopChan <-chan struct{}, db *
 	}()
 }
 
-func UpdateBeatmap(beatmapID uint, mods models.Mods, beatmapRepo *repositories.BeatmapRepository, beatmapsetRepo *repositories.BeatmapsetRepository, beatmapAttributes *repositories.BeatmapAttributesRepository) error {
-	osuBeatmap, err := osuservices.GetBeatmap(beatmapID)
+func UpdateBeatmap(beatmapID uint, mods models.Mods, beatmapRepo *repositories.BeatmapRepository, beatmapsetRepo *repositories.BeatmapsetRepository, beatmapAttributes *repositories.BeatmapAttributesRepository, osuSvc *osuservices.OsuService) error {
+	osuBeatmap, err := osuSvc.GetBeatmap(beatmapID)
 	if err != nil {
 		return err
 	}
@@ -54,7 +54,7 @@ func UpdateBeatmap(beatmapID uint, mods models.Mods, beatmapRepo *repositories.B
 		return err
 	}
 
-	osuAttributes, err := osuservices.GetBeatmapAttribute(beatmapID, mods)
+	osuAttributes, err := osuSvc.GetBeatmapAttribute(beatmapID, mods)
 	if err != nil {
 		return err
 	}

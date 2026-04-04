@@ -6,6 +6,7 @@ import (
 	"score-tracker/jobs"
 	"score-tracker/middlewares"
 	"score-tracker/models"
+	"score-tracker/osuservices"
 
 	"github.com/gin-gonic/gin"
 )
@@ -21,7 +22,7 @@ func main() {
 		&models.BeatmapAttributes{},
 		&models.Beatmap{},
 		&models.Score{},
-		&models.Cursor{},
+		&models.Token{},
 	); err != nil {
 		log.Fatal("Failed to migrate database:", err)
 	}
@@ -30,7 +31,9 @@ func main() {
 
 	r.Use(middlewares.DatabaseMiddleware(database.DB))
 
-	jobs.CreateJobs(database.DB)
+	osuSvc := osuservices.NewOsuService(database.DB)
+
+	jobs.CreateJobs(database.DB, osuSvc)
 
 	r.Run(":8080")
 }

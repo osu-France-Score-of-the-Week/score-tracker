@@ -8,7 +8,7 @@ import (
 	"strings"
 )
 
-func GetBeatmap(beatmapId uint) (models.OsuBeatmap, error) {
+func (s *OsuService) GetBeatmap(beatmapId uint) (models.OsuBeatmap, error) {
 	client := &http.Client{}
 
 	req, err := http.NewRequest("GET", fmt.Sprintf("https://osu.ppy.sh/api/v2/beatmaps/%d", beatmapId), nil)
@@ -16,7 +16,7 @@ func GetBeatmap(beatmapId uint) (models.OsuBeatmap, error) {
 		return models.OsuBeatmap{}, err
 	}
 
-	token, err := getOsuToken()
+	token, err := s.getValidOsuToken()
 	if err != nil {
 		return models.OsuBeatmap{}, err
 	}
@@ -37,7 +37,7 @@ func GetBeatmap(beatmapId uint) (models.OsuBeatmap, error) {
 	return beatmap, nil
 }
 
-func GetBeatmapAttribute(beatmapId uint, mods models.Mods) (models.OsuBeatmapAttributes, error) {
+func (s *OsuService) GetBeatmapAttribute(beatmapId uint, mods models.Mods) (models.OsuBeatmapAttributes, error) {
 	client := &http.Client{}
 
 	var modsVal interface{}
@@ -58,7 +58,7 @@ func GetBeatmapAttribute(beatmapId uint, mods models.Mods) (models.OsuBeatmapAtt
 		return models.OsuBeatmapAttributes{}, err
 	}
 
-	token, err := getOsuToken()
+	token, err := s.getValidOsuToken()
 	if err != nil {
 		return models.OsuBeatmapAttributes{}, err
 	}

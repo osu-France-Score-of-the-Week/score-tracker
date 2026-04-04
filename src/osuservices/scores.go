@@ -8,7 +8,7 @@ import (
 	"score-tracker/models"
 )
 
-func GetRecentScores(cursor string) (models.RecentScoresResponse, error) {
+func (s *OsuService) GetRecentScores(cursor string) (models.RecentScoresResponse, error) {
 	client := &http.Client{}
 
 	req, err := http.NewRequest("GET", "https://osu.ppy.sh/api/v2/scores", nil)
@@ -23,7 +23,7 @@ func GetRecentScores(cursor string) (models.RecentScoresResponse, error) {
 	}
 	req.URL.RawQuery = q.Encode()
 
-	token, err := getOsuToken()
+	token, err := s.getValidOsuToken()
 	if err != nil {
 		return models.RecentScoresResponse{}, err
 	}

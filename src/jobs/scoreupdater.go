@@ -7,7 +7,7 @@ import (
 	"time"
 )
 
-func RetrieveScores(interval time.Duration, stopChan <-chan struct{}, filterChan chan<- models.OsuScore) {
+func RetrieveScores(interval time.Duration, stopChan <-chan struct{}, filterChan chan<- models.OsuScore, osuSvc *osuservices.OsuService) {
 
 	go func() {
 		ticker := time.NewTicker(interval)
@@ -17,7 +17,7 @@ func RetrieveScores(interval time.Duration, stopChan <-chan struct{}, filterChan
 		for {
 			select {
 			case <-ticker.C:
-				recentScores, err := osuservices.GetRecentScores(cursor)
+				recentScores, err := osuSvc.GetRecentScores(cursor)
 				if err != nil {
 					fmt.Println("Error updating recent scores:", err)
 					continue
