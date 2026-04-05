@@ -11,3 +11,11 @@ func DatabaseMiddleware(db *gorm.DB) gin.HandlerFunc {
 		c.Next()
 	}
 }
+
+func GetDB(c *gin.Context) *gorm.DB {
+	db, exists := c.Get("DB")
+	if !exists {
+		return nil
+	}
+	return db.(*gorm.DB)
+}

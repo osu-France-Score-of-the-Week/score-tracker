@@ -9,14 +9,58 @@ type Score struct {
 	ID         uint `gorm:"primaryKey"`
 	Accuracy   float64
 	BeatmapID  uint
+	Beatmap    Beatmap
 	EndedAt    int64
 	HasReplay  bool
 	MaxCombo   uint
 	Mods       Mods `gorm:"type:jsonb"`
 	Pp         float64
 	Rank       string
-	Statistics string
+	Statistics ScoreStatistics `gorm:"type:jsonb"`
 	PlayerID   uint
+	Player     Player
+}
+
+type ScoreStatistics map[string]int
+
+func (s ScoreStatistics) Value() (driver.Value, error) {
+	if s == nil {
+		return []byte("{}"), nil
+	}
+	b, err := json.Marshal(s)
+	if err != nil {
+		return nil, err
+	}
+	return b, nil
+}
+
+func (s *ScoreStatistics) Scan(value interface{}) error {
+	if value == nil {
+		*s = ScoreStatistics{}
+		return nil
+	}
+
+	var bytes []byte
+	switch v := value.(type) {
+	case string:
+		bytes = []byte(v)
+	case []byte:
+		bytes = v
+	default:
+		return nil
+	}
+
+	if len(bytes) == 0 {
+		*s = ScoreStatistics{}
+		return nil
+	}
+
+	var out map[string]int
+	if err := json.Unmarshal(bytes, &out); err != nil {
+		return err
+	}
+	*s = ScoreStatistics(out)
+	return nil
 }
 
 type Mods []Mod
@@ -62,11 +106,6 @@ func (m *Mods) Scan(value interface{}) error {
 }
 
 func MapOsuScoreToModel(s OsuScore) (Score, error) {
-	statsJSON, err := json.Marshal(s.Statistics)
-	if err != nil {
-		return Score{}, err
-	}
-
 	pp := 0.0
 	if s.Pp != nil {
 		pp = *s.Pp
@@ -75,6 +114,11 @@ func MapOsuScoreToModel(s OsuScore) (Score, error) {
 	mods := Mods(s.Mods)
 	if mods == nil {
 		mods = Mods{}
+	}
+
+	stats := ScoreStatistics(s.Statistics)
+	if stats == nil {
+		stats = ScoreStatistics{}
 	}
 
 	return Score{
@@ -87,7 +131,7 @@ func MapOsuScoreToModel(s OsuScore) (Score, error) {
 		Mods:       mods,
 		Pp:         pp,
 		Rank:       s.Rank,
-		Statistics: string(statsJSON),
+		Statistics: stats,
 		PlayerID:   s.UserID,
 	}, nil
 }
@@ -95,4 +139,15 @@ func MapOsuScoreToModel(s OsuScore) (Score, error) {
 type Mod struct {
 	Acronym  string                 `json:"acronym"`
 	Settings map[string]interface{} `json:"settings"`
+}
+
+type ScoreCursorResponse struct {
+	Scores []Score `json:"scores"`
+	Cursor string  `json:"cursor"`
+}
+
+type ScorePageResponse struct {
+	Scores     []Score `json:"scores"`
+	Page       int     `json:"page"`
+	TotalPages int     `json:"totalPages"`
 }

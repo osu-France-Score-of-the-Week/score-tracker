@@ -7,6 +7,7 @@ import (
 	"score-tracker/middlewares"
 	"score-tracker/models"
 	"score-tracker/osuservices"
+	"score-tracker/routes"
 
 	"github.com/gin-gonic/gin"
 )
@@ -34,6 +35,9 @@ func main() {
 	osuSvc := osuservices.NewOsuService(database.DB)
 
 	jobs.CreateJobs(database.DB, osuSvc)
+
+	v1 := r.Group("/api/v1")
+	routes.SetupScoreRoutes(v1.Group("/scores"))
 
 	r.Run(":8080")
 }
