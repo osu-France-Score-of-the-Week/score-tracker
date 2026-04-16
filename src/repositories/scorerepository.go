@@ -1,6 +1,9 @@
 package repositories
 
 import (
+	"encoding/base64"
+	"encoding/json"
+	"errors"
 	"fmt"
 	"math"
 	"score-tracker/models"
@@ -14,6 +17,19 @@ type ScoreRepository struct {
 	db *gorm.DB
 }
 
+var ErrInvalidCursor = errors.New("invalid cursor")
+
+type bestScoresCursor struct {
+	Pp      float64 `json:"pp"`
+	EndedAt int64   `json:"ended_at"`
+	ID      uint    `json:"id"`
+}
+
+type recentScoresCursor struct {
+	EndedAt int64 `json:"ended_at"`
+	ID      uint  `json:"id"`
+}
+
 func NewScoreRepository(db *gorm.DB) *ScoreRepository {
 	return &ScoreRepository{db: db}
 }
@@ -25,11 +41,44 @@ func (r *ScoreRepository) Create(score *models.Score) error {
 	return nil
 }
 
-func (r *ScoreRepository) GetRecentScores(cursor string) (models.ScoreCursorResponse, error) {
+func (r *ScoreRepository) GetScores(cursor string, sort string) (models.ScoreCursorResponse, error) {
 	var scores []models.Score
-	query := r.db.Preload("Beatmap").Preload("Beatmap.Beatmapset").Preload("Player").Order("ended_at DESC").Limit(50)
-	if cursor != "" {
-		query = query.Where("ended_at > ?", cursor)
+	query := r.db.Preload("Beatmap").Preload("Beatmap.Beatmapset").Preload("Player").Limit(50)
+
+	switch sort {
+	case "best":
+		query = query.Order("pp DESC").Order("ended_at DESC").Order("id DESC")
+		if cursor != "" {
+			decodedCursor, err := decodeBestScoresCursor(cursor)
+			if err != nil {
+				return models.ScoreCursorResponse{}, err
+			}
+
+			query = query.Where(
+				"pp < ? OR (pp = ? AND ended_at < ?) OR (pp = ? AND ended_at = ? AND id < ?)",
+				decodedCursor.Pp,
+				decodedCursor.Pp,
+				decodedCursor.EndedAt,
+				decodedCursor.Pp,
+				decodedCursor.EndedAt,
+				decodedCursor.ID,
+			)
+		}
+	default:
+		query = query.Order("ended_at DESC").Order("id DESC")
+		if cursor != "" {
+			decodedCursor, err := decodeRecentScoresCursor(cursor)
+			if err != nil {
+				return models.ScoreCursorResponse{}, err
+			}
+
+			query = query.Where(
+				"ended_at > ? OR (ended_at = ? AND id > ?)",
+				decodedCursor.EndedAt,
+				decodedCursor.EndedAt,
+				decodedCursor.ID,
+			)
+		}
 	}
 
 	if err := query.Find(&scores).Error; err != nil {
@@ -37,8 +86,18 @@ func (r *ScoreRepository) GetRecentScores(cursor string) (models.ScoreCursorResp
 	}
 
 	var nextCursor string
-	if len(scores) > 0 {
-		nextCursor = strconv.FormatInt(scores[0].EndedAt, 10)
+	if sort == "recent" && len(scores) > 0 {
+		encodedCursor, err := encodeRecentScoresCursor(scores[0])
+		if err != nil {
+			return models.ScoreCursorResponse{}, err
+		}
+		nextCursor = encodedCursor
+	} else if sort == "best" && len(scores) > 0 {
+		encodedCursor, err := encodeBestScoresCursor(scores[len(scores)-1])
+		if err != nil {
+			return models.ScoreCursorResponse{}, err
+		}
+		nextCursor = encodedCursor
 	} else {
 		nextCursor = cursor
 	}
@@ -47,6 +106,79 @@ func (r *ScoreRepository) GetRecentScores(cursor string) (models.ScoreCursorResp
 		Scores: scores,
 		Cursor: nextCursor,
 	}, nil
+}
+
+func encodeBestScoresCursor(score models.Score) (string, error) {
+	payload := bestScoresCursor{
+		Pp:      score.Pp,
+		EndedAt: score.EndedAt,
+		ID:      score.ID,
+	}
+
+	encoded, err := json.Marshal(payload)
+	if err != nil {
+		return "", err
+	}
+
+	return base64.RawURLEncoding.EncodeToString(encoded), nil
+}
+
+func decodeBestScoresCursor(cursor string) (bestScoresCursor, error) {
+	decoded, err := base64.RawURLEncoding.DecodeString(cursor)
+	if err != nil {
+		return bestScoresCursor{}, fmt.Errorf("%w: malformed cursor", ErrInvalidCursor)
+	}
+
+	var payload bestScoresCursor
+	if err := json.Unmarshal(decoded, &payload); err != nil {
+		return bestScoresCursor{}, fmt.Errorf("%w: malformed cursor payload", ErrInvalidCursor)
+	}
+
+	if payload.EndedAt <= 0 || payload.ID == 0 {
+		return bestScoresCursor{}, fmt.Errorf("%w: missing cursor fields", ErrInvalidCursor)
+	}
+
+	return payload, nil
+}
+
+func encodeRecentScoresCursor(score models.Score) (string, error) {
+	payload := recentScoresCursor{
+		EndedAt: score.EndedAt,
+		ID:      score.ID,
+	}
+
+	encoded, err := json.Marshal(payload)
+	if err != nil {
+		return "", err
+	}
+
+	return base64.RawURLEncoding.EncodeToString(encoded), nil
+}
+
+func decodeRecentScoresCursor(cursor string) (recentScoresCursor, error) {
+	decoded, err := base64.RawURLEncoding.DecodeString(cursor)
+	if err != nil {
+		// Backward compatibility: allow old numeric cursor (ended_at timestamp).
+		endedAt, parseErr := strconv.ParseInt(cursor, 10, 64)
+		if parseErr != nil {
+			return recentScoresCursor{}, fmt.Errorf("%w: malformed cursor", ErrInvalidCursor)
+		}
+		if endedAt <= 0 {
+			return recentScoresCursor{}, fmt.Errorf("%w: missing cursor fields", ErrInvalidCursor)
+		}
+		return recentScoresCursor{EndedAt: endedAt, ID: ^uint(0)}, nil
+	}
+
+	var payload recentScoresCursor
+	if err := json.Unmarshal(decoded, &payload); err != nil {
+		return recentScoresCursor{}, fmt.Errorf("%w: malformed cursor payload", ErrInvalidCursor)
+	}
+
+	if payload.EndedAt <= 0 || payload.ID == 0 {
+		return recentScoresCursor{}, fmt.Errorf("%w: missing cursor fields", ErrInvalidCursor)
+	}
+
+	return payload, nil
 }
 
 func (r *ScoreRepository) GetScoresByPlayer(playerID int, page int, sort string, from string, to string) (models.ScorePageResponse, error) {
@@ -88,11 +220,11 @@ func (r *ScoreRepository) GetScoresByPlayer(playerID int, page int, sort string,
 
 	switch sort {
 	case "top":
-		query = query.Order("pp DESC").Order("ended_at DESC").Order("id DESC")
+		query = query.Order("pp DESC").Order("ended_at DESC")
 	case "recent", "":
 		fallthrough
 	default:
-		query = query.Order("ended_at DESC").Order("id DESC")
+		query = query.Order("ended_at DESC")
 	}
 
 	if err := query.Limit(limit).Offset(offset).Find(&scores).Error; err != nil {

@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"errors"
 	"net/http"
 	"score-tracker/middlewares"
 	"score-tracker/repositories"
@@ -11,13 +12,20 @@ import (
 
 func GetScores(ctx *gin.Context) {
 	cursor := ctx.Query("cursor")
-	if cursor == "" {
+	sort := ctx.DefaultQuery("sort", "recent")
 
+	if sort != "recent" && sort != "best" {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "invalid sort (use recent or best)"})
+		return
 	}
 
 	scoreRepo := repositories.NewScoreRepository(middlewares.GetDB(ctx))
-	scoresResponse, err := scoreRepo.GetRecentScores(cursor)
+	scoresResponse, err := scoreRepo.GetScores(cursor, sort)
 	if err != nil {
+		if errors.Is(err, repositories.ErrInvalidCursor) {
+			ctx.JSON(http.StatusBadRequest, gin.H{"error": "invalid cursor"})
+			return
+		}
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve scores"})
 		return
 	}
