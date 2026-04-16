@@ -59,3 +59,26 @@ func GetScoresByPlayer(ctx *gin.Context) {
 
 	ctx.JSON(http.StatusOK, scoresResponse)
 }
+
+func GetScoresByBeatmap(ctx *gin.Context) {
+	beatmapID, err := strconv.Atoi(ctx.Param("beatmap_id"))
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "invalid beatmap_id"})
+		return
+	}
+
+	page, err := strconv.Atoi(ctx.DefaultQuery("page", "1"))
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "invalid page"})
+		return
+	}
+
+	scoreRepo := repositories.NewScoreRepository(middlewares.GetDB(ctx))
+	scoresResponse, err := scoreRepo.GetScoresByBeatmap(beatmapID, page)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve scores"})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, scoresResponse)
+}

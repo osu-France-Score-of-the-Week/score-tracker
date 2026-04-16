@@ -242,3 +242,35 @@ func (r *ScoreRepository) GetScoresByPlayer(playerID int, page int, sort string,
 		TotalPages: totalPages,
 	}, nil
 }
+
+func (r *ScoreRepository) GetScoresByBeatmap(beatmapID int, page int) (models.ScorePageResponse, error) {
+	var scores []models.Score
+
+	if page < 1 {
+		page = 1
+	}
+
+	const limit = 50
+	offset := (page - 1) * limit
+
+	query := r.db.Preload("Beatmap").Preload("Beatmap.Beatmapset").Preload("Player").Where("beatmap_id = ?", beatmapID)
+
+	var total int64
+	if err := query.Model(&models.Score{}).Count(&total).Error; err != nil {
+		return models.ScorePageResponse{}, err
+	}
+
+	if err := query.Order("pp DESC").Order("ended_at DESC").Limit(limit).Offset(offset).Find(&scores).Error; err != nil {
+		return models.ScorePageResponse{}, err
+	}
+
+	if len(scores) == 0 {
+		return models.ScorePageResponse{}, gorm.ErrRecordNotFound
+	}
+
+	return models.ScorePageResponse{
+		Scores:     scores,
+		Page:       page,
+		TotalPages: int(math.Ceil(float64(total) / float64(limit))),
+	}, nil
+}
