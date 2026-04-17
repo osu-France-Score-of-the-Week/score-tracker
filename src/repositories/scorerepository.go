@@ -41,9 +41,9 @@ func (r *ScoreRepository) Create(score *models.Score) error {
 	return nil
 }
 
-func (r *ScoreRepository) GetScores(cursor string, sort string) (models.ScoreCursorResponse, error) {
-	var scores []models.Score
-	query := r.db.Preload("Beatmap").Preload("Beatmap.Beatmapset").Preload("Player").Limit(50)
+func (r *ScoreRepository) GetScores(cursor string, sort string) (models.ScoreWithAttributesCursorResponse, error) {
+	var scores []models.ScoreWithAttributes
+	query := r.db.Model(&models.Score{}).Preload("Beatmap").Preload("Beatmap.Beatmapset").Preload("Player").Limit(50)
 
 	switch sort {
 	case "best":
@@ -51,7 +51,7 @@ func (r *ScoreRepository) GetScores(cursor string, sort string) (models.ScoreCur
 		if cursor != "" {
 			decodedCursor, err := decodeBestScoresCursor(cursor)
 			if err != nil {
-				return models.ScoreCursorResponse{}, err
+				return models.ScoreWithAttributesCursorResponse{}, err
 			}
 
 			query = query.Where(
@@ -69,7 +69,7 @@ func (r *ScoreRepository) GetScores(cursor string, sort string) (models.ScoreCur
 		if cursor != "" {
 			decodedCursor, err := decodeRecentScoresCursor(cursor)
 			if err != nil {
-				return models.ScoreCursorResponse{}, err
+				return models.ScoreWithAttributesCursorResponse{}, err
 			}
 
 			query = query.Where(
@@ -82,33 +82,41 @@ func (r *ScoreRepository) GetScores(cursor string, sort string) (models.ScoreCur
 	}
 
 	if err := query.Find(&scores).Error; err != nil {
-		return models.ScoreCursorResponse{}, err
+		return models.ScoreWithAttributesCursorResponse{}, err
 	}
 
 	var nextCursor string
 	if sort == "recent" && len(scores) > 0 {
 		encodedCursor, err := encodeRecentScoresCursor(scores[0])
 		if err != nil {
-			return models.ScoreCursorResponse{}, err
+			return models.ScoreWithAttributesCursorResponse{}, err
 		}
 		nextCursor = encodedCursor
 	} else if sort == "best" && len(scores) > 0 {
 		encodedCursor, err := encodeBestScoresCursor(scores[len(scores)-1])
 		if err != nil {
-			return models.ScoreCursorResponse{}, err
+			return models.ScoreWithAttributesCursorResponse{}, err
 		}
 		nextCursor = encodedCursor
 	} else {
 		nextCursor = cursor
 	}
 
-	return models.ScoreCursorResponse{
+	// Add beatmap attributes to each score
+	for i := range scores {
+		var attributes models.BeatmapAttributes
+		if err := r.db.Where("beatmap_id = ?", scores[i].BeatmapID).Where("mods = ?", scores[i].Mods).First(&attributes).Error; err == nil {
+			scores[i].Attributes = attributes
+		}
+	}
+
+	return models.ScoreWithAttributesCursorResponse{
 		Scores: scores,
 		Cursor: nextCursor,
 	}, nil
 }
 
-func encodeBestScoresCursor(score models.Score) (string, error) {
+func encodeBestScoresCursor(score models.ScoreWithAttributes) (string, error) {
 	payload := bestScoresCursor{
 		Pp:      score.Pp,
 		EndedAt: score.EndedAt,
@@ -141,7 +149,7 @@ func decodeBestScoresCursor(cursor string) (bestScoresCursor, error) {
 	return payload, nil
 }
 
-func encodeRecentScoresCursor(score models.Score) (string, error) {
+func encodeRecentScoresCursor(score models.ScoreWithAttributes) (string, error) {
 	payload := recentScoresCursor{
 		EndedAt: score.EndedAt,
 		ID:      score.ID,

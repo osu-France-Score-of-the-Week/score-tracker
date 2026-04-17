@@ -151,3 +151,25 @@ type ScorePageResponse struct {
 	Page       int     `json:"page"`
 	TotalPages int     `json:"totalPages"`
 }
+
+type ScoreWithAttributes struct {
+	ID         uint
+	Accuracy   float64
+	BeatmapID  uint
+	Beatmap    Beatmap
+	EndedAt    int64
+	HasReplay  bool
+	MaxCombo   uint
+	Mods       Mods `gorm:"type:jsonb"`
+	Pp         float64
+	Rank       string
+	Statistics ScoreStatistics `gorm:"type:jsonb"`
+	PlayerID   uint
+	Player     Player
+	Attributes BeatmapAttributes `gorm:"-"`
+}
+
+type ScoreWithAttributesCursorResponse struct {
+	Scores []ScoreWithAttributes `json:"scores"`
+	Cursor string                `json:"cursor"`
+}
