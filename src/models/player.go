@@ -15,3 +15,9 @@ func MapOsuUserToModel(u User) Player {
 		Pp:         u.Statistics.Pp,
 	}
 }
+
+type PlayersResponse struct {
+	Players []Player `json:"players"`
+	Page    int      `json:"page"`
+	Total   int64    `json:"total"`
+}

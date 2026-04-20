@@ -45,6 +45,7 @@ func main() {
 
 	v1 := r.Group("/api/v1")
 	routes.SetupScoreRoutes(v1.Group("/scores"))
+	routes.SetupPlayerRoutes(v1.Group("/players"))
 
 	r.Run(":8080")
 }
