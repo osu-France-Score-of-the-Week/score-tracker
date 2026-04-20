@@ -28,20 +28,32 @@ func (r *PlayerRepository) Update(player *models.Player) error {
 	return nil
 }
 
-func (r *PlayerRepository) GetPlayers(page int) (models.PlayersResponse, error) {
-	var players []models.Player
-	if err := r.db.Order("global_rank ASC").Offset((page - 1) * 50).Limit(50).Find(&players).Error; err != nil {
-		return models.PlayersResponse{}, err
+func (r *PlayerRepository) GetPlayers(page int) (models.PlayersPageResponse, error) {
+	const pageSize int64 = 50
+
+	var players []models.PlayerResponse
+	if err := r.db.Model(&models.Player{}).Order("global_rank ASC").Offset((page - 1) * int(pageSize)).Limit(int(pageSize)).Find(&players).Error; err != nil {
+		return models.PlayersPageResponse{}, err
 	}
 
-	var total int64
-	if err := r.db.Model(&models.Player{}).Count(&total).Error; err != nil {
-		return models.PlayersResponse{}, err
+	var totalPlayers int64
+	if err := r.db.Model(&models.Player{}).Count(&totalPlayers).Error; err != nil {
+		return models.PlayersPageResponse{}, err
 	}
 
-	return models.PlayersResponse{
-		Players: players,
-		Page:    page,
-		Total:   total,
+	totalPages := (totalPlayers + pageSize - 1) / pageSize
+
+	for i := range players {
+		var scoreCount int64
+		if err := r.db.Model(&models.Score{}).Where("player_id = ?", players[i].ID).Count(&scoreCount).Error; err != nil {
+			return models.PlayersPageResponse{}, err
+		}
+		players[i].ScoreCount = uint(scoreCount)
+	}
+
+	return models.PlayersPageResponse{
+		Players:    players,
+		Page:       page,
+		TotalPages: totalPages,
 	}, nil
 }

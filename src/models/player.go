@@ -16,8 +16,16 @@ func MapOsuUserToModel(u User) Player {
 	}
 }
 
-type PlayersResponse struct {
-	Players []Player `json:"players"`
-	Page    int      `json:"page"`
-	Total   int64    `json:"total"`
+type PlayerResponse struct {
+	ID         uint
+	Username   string
+	GlobalRank uint
+	Pp         float64
+	ScoreCount uint `gorm:"-" json:"scoreCount"`
+}
+
+type PlayersPageResponse struct {
+	Players    []PlayerResponse `json:"players"`
+	Page       int              `json:"page"`
+	TotalPages int64            `json:"totalPages"`
 }
