@@ -189,8 +189,8 @@ func decodeRecentScoresCursor(cursor string) (recentScoresCursor, error) {
 	return payload, nil
 }
 
-func (r *ScoreRepository) GetScoresByPlayer(playerID int, page int, sort string, from string, to string) (models.ScorePageResponse, error) {
-	var scores []models.Score
+func (r *ScoreRepository) GetScoresByPlayer(playerID int, page int, sort string, from string, to string) (models.ScoreWithAttributesPageResponse, error) {
+	var scores []models.ScoreWithAttributes
 
 	if page < 1 {
 		page = 1
@@ -199,7 +199,7 @@ func (r *ScoreRepository) GetScoresByPlayer(playerID int, page int, sort string,
 	const limit = 50
 	offset := (page - 1) * limit
 
-	query := r.db.
+	query := r.db.Model(&models.Score{}).
 		Preload("Beatmap").
 		Preload("Beatmap.Beatmapset").
 		Preload("Player").
@@ -208,26 +208,26 @@ func (r *ScoreRepository) GetScoresByPlayer(playerID int, page int, sort string,
 	if from != "" {
 		fromTime, err := time.Parse("2006-01-02", from)
 		if err != nil {
-			return models.ScorePageResponse{}, fmt.Errorf("invalid from date: %w", err)
+			return models.ScoreWithAttributesPageResponse{}, fmt.Errorf("invalid from date: %w", err)
 		}
 		query = query.Where("ended_at >= ?", fromTime.Unix())
 	}
 	if to != "" {
 		toTime, err := time.Parse("2006-01-02", to)
 		if err != nil {
-			return models.ScorePageResponse{}, fmt.Errorf("invalid to date: %w", err)
+			return models.ScoreWithAttributesPageResponse{}, fmt.Errorf("invalid to date: %w", err)
 		}
 		endOfDay := toTime.Add(23*time.Hour + 59*time.Minute + 59*time.Second)
 		query = query.Where("ended_at <= ?", endOfDay.Unix())
 	}
 
 	var total int64
-	if err := query.Model(&models.Score{}).Count(&total).Error; err != nil {
-		return models.ScorePageResponse{}, err
+	if err := query.Count(&total).Error; err != nil {
+		return models.ScoreWithAttributesPageResponse{}, err
 	}
 
 	switch sort {
-	case "top":
+	case "best":
 		query = query.Order("pp DESC").Order("ended_at DESC")
 	case "recent", "":
 		fallthrough
@@ -236,7 +236,15 @@ func (r *ScoreRepository) GetScoresByPlayer(playerID int, page int, sort string,
 	}
 
 	if err := query.Limit(limit).Offset(offset).Find(&scores).Error; err != nil {
-		return models.ScorePageResponse{}, err
+		return models.ScoreWithAttributesPageResponse{}, err
+	}
+
+	// Load beatmap attributes for each score
+	for i := range scores {
+		var attributes models.BeatmapAttributes
+		if err := r.db.Where("beatmap_id = ?", scores[i].BeatmapID).Where("mods = ?", scores[i].Mods).First(&attributes).Error; err == nil {
+			scores[i].Attributes = attributes
+		}
 	}
 
 	totalPages := int(math.Ceil(float64(total) / float64(limit)))
@@ -244,15 +252,15 @@ func (r *ScoreRepository) GetScoresByPlayer(playerID int, page int, sort string,
 		totalPages = 1
 	}
 
-	return models.ScorePageResponse{
+	return models.ScoreWithAttributesPageResponse{
 		Scores:     scores,
 		Page:       page,
 		TotalPages: totalPages,
 	}, nil
 }
 
-func (r *ScoreRepository) GetScoresByBeatmap(beatmapID int, page int) (models.ScorePageResponse, error) {
-	var scores []models.Score
+func (r *ScoreRepository) GetScoresByBeatmap(beatmapID int, page int) (models.ScoreWithAttributesPageResponse, error) {
+	var scores []models.ScoreWithAttributes
 
 	if page < 1 {
 		page = 1
@@ -261,24 +269,37 @@ func (r *ScoreRepository) GetScoresByBeatmap(beatmapID int, page int) (models.Sc
 	const limit = 50
 	offset := (page - 1) * limit
 
-	query := r.db.Preload("Beatmap").Preload("Beatmap.Beatmapset").Preload("Player").Where("beatmap_id = ?", beatmapID)
+	query := r.db.Model(&models.Score{}).Preload("Beatmap").Preload("Beatmap.Beatmapset").Preload("Player").Where("beatmap_id = ?", beatmapID)
 
 	var total int64
-	if err := query.Model(&models.Score{}).Count(&total).Error; err != nil {
-		return models.ScorePageResponse{}, err
+	if err := query.Count(&total).Error; err != nil {
+		return models.ScoreWithAttributesPageResponse{}, err
 	}
 
 	if err := query.Order("pp DESC").Order("ended_at DESC").Limit(limit).Offset(offset).Find(&scores).Error; err != nil {
-		return models.ScorePageResponse{}, err
+		return models.ScoreWithAttributesPageResponse{}, err
 	}
 
 	if len(scores) == 0 {
-		return models.ScorePageResponse{}, gorm.ErrRecordNotFound
+		return models.ScoreWithAttributesPageResponse{}, gorm.ErrRecordNotFound
 	}
 
-	return models.ScorePageResponse{
+	// Load beatmap attributes for each score
+	for i := range scores {
+		var attributes models.BeatmapAttributes
+		if err := r.db.Where("beatmap_id = ?", scores[i].BeatmapID).Where("mods = ?", scores[i].Mods).First(&attributes).Error; err == nil {
+			scores[i].Attributes = attributes
+		}
+	}
+
+	totalPages := int(math.Ceil(float64(total) / float64(limit)))
+	if totalPages == 0 {
+		totalPages = 1
+	}
+
+	return models.ScoreWithAttributesPageResponse{
 		Scores:     scores,
 		Page:       page,
-		TotalPages: int(math.Ceil(float64(total) / float64(limit))),
+		TotalPages: totalPages,
 	}, nil
 }

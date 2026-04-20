@@ -173,3 +173,9 @@ type ScoreWithAttributesCursorResponse struct {
 	Scores []ScoreWithAttributes `json:"scores"`
 	Cursor string                `json:"cursor"`
 }
+
+type ScoreWithAttributesPageResponse struct {
+	Scores     []ScoreWithAttributes `json:"scores"`
+	Page       int                   `json:"page"`
+	TotalPages int                   `json:"totalPages"`
+}
