@@ -41,12 +41,33 @@ func (r *ScoreRepository) Create(score *models.Score) error {
 	return nil
 }
 
-func (r *ScoreRepository) GetScores(cursor string, sort string) (models.ScoreWithAttributesCursorResponse, error) {
+func (r *ScoreRepository) GetScores(cursor string, sort string, start_date string, end_date string) (models.ScoreWithAttributesCursorResponse, error) {
+	const limit = 50
+
 	var scores []models.ScoreWithAttributes
-	query := r.db.Model(&models.Score{}).Preload("Beatmap").Preload("Beatmap.Beatmapset").Preload("Player").Limit(50)
+	query := r.db.Model(&models.Score{}).Preload("Beatmap").Preload("Beatmap.Beatmapset").Preload("Player").Limit(limit)
 
 	switch sort {
 	case "best":
+		query = query.Limit(limit + 1)
+
+		if start_date != "" {
+			startTime, err := time.Parse("2006-01-02", start_date)
+			if err != nil {
+				return models.ScoreWithAttributesCursorResponse{}, fmt.Errorf("invalid from date: %w", err)
+			}
+			query = query.Where("ended_at >= ?", startTime.Unix())
+		}
+
+		if end_date != "" {
+			endTime, err := time.Parse("2006-01-02", end_date)
+			if err != nil {
+				return models.ScoreWithAttributesCursorResponse{}, fmt.Errorf("invalid to date: %w", err)
+			}
+			endOfDay := endTime.Add(23*time.Hour + 59*time.Minute + 59*time.Second)
+			query = query.Where("ended_at <= ?", endOfDay.Unix())
+		}
+
 		query = query.Order("pp DESC").Order("ended_at DESC").Order("id DESC")
 		if cursor != "" {
 			decodedCursor, err := decodeBestScoresCursor(cursor)
@@ -73,7 +94,7 @@ func (r *ScoreRepository) GetScores(cursor string, sort string) (models.ScoreWit
 			}
 
 			query = query.Where(
-				"ended_at > ? OR (ended_at = ? AND id > ?)",
+				"ended_at < ? OR (ended_at = ? AND id < ?)",
 				decodedCursor.EndedAt,
 				decodedCursor.EndedAt,
 				decodedCursor.ID,
@@ -85,14 +106,19 @@ func (r *ScoreRepository) GetScores(cursor string, sort string) (models.ScoreWit
 		return models.ScoreWithAttributesCursorResponse{}, err
 	}
 
+	hasNextBest := sort == "best" && len(scores) > limit
+	if hasNextBest {
+		scores = scores[:limit]
+	}
+
 	var nextCursor string
 	if sort == "recent" && len(scores) > 0 {
-		encodedCursor, err := encodeRecentScoresCursor(scores[0])
+		encodedCursor, err := encodeRecentScoresCursor(scores[len(scores)-1])
 		if err != nil {
 			return models.ScoreWithAttributesCursorResponse{}, err
 		}
 		nextCursor = encodedCursor
-	} else if sort == "best" && len(scores) > 0 {
+	} else if sort == "best" && hasNextBest {
 		encodedCursor, err := encodeBestScoresCursor(scores[len(scores)-1])
 		if err != nil {
 			return models.ScoreWithAttributesCursorResponse{}, err

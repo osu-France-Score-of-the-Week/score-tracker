@@ -13,6 +13,8 @@ import (
 func GetScores(ctx *gin.Context) {
 	cursor := ctx.Query("cursor")
 	sort := ctx.DefaultQuery("sort", "recent")
+	start_date := ctx.Query("from")
+	end_date := ctx.Query("to")
 
 	if sort != "recent" && sort != "best" {
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": "invalid sort (use recent or best)"})
@@ -20,7 +22,7 @@ func GetScores(ctx *gin.Context) {
 	}
 
 	scoreRepo := repositories.NewScoreRepository(middlewares.GetDB(ctx))
-	scoresResponse, err := scoreRepo.GetScores(cursor, sort)
+	scoresResponse, err := scoreRepo.GetScores(cursor, sort, start_date, end_date)
 	if err != nil {
 		if errors.Is(err, repositories.ErrInvalidCursor) {
 			ctx.JSON(http.StatusBadRequest, gin.H{"error": "invalid cursor"})
