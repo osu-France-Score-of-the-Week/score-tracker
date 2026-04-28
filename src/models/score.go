@@ -3,6 +3,7 @@ package models
 import (
 	"database/sql/driver"
 	"encoding/json"
+	"score-tracker/models/osu"
 )
 
 type Score struct {
@@ -105,13 +106,16 @@ func (m *Mods) Scan(value interface{}) error {
 	return nil
 }
 
-func MapOsuScoreToModel(s OsuScore) (Score, error) {
+func MapOsuScoreToModel(s osu.ScoreResponse) (Score, error) {
 	pp := 0.0
 	if s.Pp != nil {
 		pp = *s.Pp
 	}
 
-	mods := Mods(s.Mods)
+	mods := make(Mods, 0, len(s.Mods))
+	for _, mod := range s.Mods {
+		mods = append(mods, Mod{Acronym: mod.Acronym, Settings: mod.Settings})
+	}
 	if mods == nil {
 		mods = Mods{}
 	}

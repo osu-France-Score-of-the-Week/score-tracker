@@ -5,62 +5,63 @@ import (
 	"fmt"
 	"net/http"
 	"score-tracker/models"
+	osuModels "score-tracker/models/osu"
 	"strings"
 )
 
-func (s *OsuService) GetBeatmap(beatmapId uint) (models.OsuBeatmap, error) {
+func (s *OsuService) GetBeatmap(beatmapId uint) (osuModels.BeatmapResponse, error) {
 	client := &http.Client{}
 
 	req, err := http.NewRequest("GET", fmt.Sprintf("https://osu.ppy.sh/api/v2/beatmaps/%d", beatmapId), nil)
 	if err != nil {
-		return models.OsuBeatmap{}, err
+		return osuModels.BeatmapResponse{}, err
 	}
 
 	token, err := s.getValidOsuToken()
 	if err != nil {
-		return models.OsuBeatmap{}, err
+		return osuModels.BeatmapResponse{}, err
 	}
 
 	req.Header.Add("Authorization", "Bearer "+token)
 
 	resp, err := client.Do(req)
 	if err != nil {
-		return models.OsuBeatmap{}, err
+		return osuModels.BeatmapResponse{}, err
 	}
 	defer resp.Body.Close()
 
-	var beatmap models.OsuBeatmap
+	var beatmap osuModels.BeatmapResponse
 	if err := json.NewDecoder(resp.Body).Decode(&beatmap); err != nil {
-		return models.OsuBeatmap{}, err
+		return osuModels.BeatmapResponse{}, err
 	}
 
 	return beatmap, nil
 }
 
-func (s *OsuService) GetBeatmapAttribute(beatmapId uint, mods models.Mods) (models.OsuBeatmapAttributes, error) {
+func (s *OsuService) GetBeatmapAttribute(beatmapId uint, mods models.Mods) (osuModels.BeatmapAttributesResponse, error) {
 	client := &http.Client{}
 
-	var modsVal interface{}
-	if mods != nil && len(mods) > 0 {
-		modsVal = mods
-	} else {
-		modsVal = []interface{}{}
+	request := osuModels.BeatmapAttributesRequest{Mods: []osuModels.ModRequest{}}
+	for _, mod := range mods {
+		request.Mods = append(request.Mods, osuModels.ModRequest{
+			Acronym:  mod.Acronym,
+			Settings: mod.Settings,
+		})
 	}
 
-	payload := map[string]interface{}{"mods": modsVal}
-	bodyBytes, err := json.Marshal(payload)
+	bodyBytes, err := json.Marshal(request)
 	if err != nil {
-		return models.OsuBeatmapAttributes{}, err
+		return osuModels.BeatmapAttributesResponse{}, err
 	}
 
 	req, err := http.NewRequest("POST", fmt.Sprintf("https://osu.ppy.sh/api/v2/beatmaps/%d/attributes", beatmapId), strings.NewReader(string(bodyBytes)))
 	if err != nil {
-		return models.OsuBeatmapAttributes{}, err
+		return osuModels.BeatmapAttributesResponse{}, err
 	}
 
 	token, err := s.getValidOsuToken()
 	if err != nil {
-		return models.OsuBeatmapAttributes{}, err
+		return osuModels.BeatmapAttributesResponse{}, err
 	}
 
 	req.Header.Add("Authorization", "Bearer "+token)
@@ -68,13 +69,13 @@ func (s *OsuService) GetBeatmapAttribute(beatmapId uint, mods models.Mods) (mode
 
 	resp, err := client.Do(req)
 	if err != nil {
-		return models.OsuBeatmapAttributes{}, err
+		return osuModels.BeatmapAttributesResponse{}, err
 	}
 	defer resp.Body.Close()
 
-	var attributes models.OsuBeatmapAttributes
+	var attributes osuModels.BeatmapAttributesResponse
 	if err := json.NewDecoder(resp.Body).Decode(&attributes); err != nil {
-		return models.OsuBeatmapAttributes{}, err
+		return osuModels.BeatmapAttributesResponse{}, err
 	}
 
 	return attributes, nil

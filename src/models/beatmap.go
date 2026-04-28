@@ -1,5 +1,7 @@
 package models
 
+import "score-tracker/models/osu"
+
 type Beatmap struct {
 	ID               uint `gorm:"primaryKey"`
 	BeatmapsetID     uint
@@ -8,7 +10,7 @@ type Beatmap struct {
 	Version          string
 }
 
-func MapOsuBeatmapToModel(b OsuBeatmap) Beatmap {
+func MapOsuBeatmapToModel(b osu.BeatmapResponse) Beatmap {
 	return Beatmap{
 		ID:               b.ID,
 		BeatmapsetID:     b.Beatmapset.ID,

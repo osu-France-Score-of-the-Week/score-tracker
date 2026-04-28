@@ -2,6 +2,7 @@ package jobs
 
 import (
 	"score-tracker/models"
+	osuModels "score-tracker/models/osu"
 	"score-tracker/osuservices"
 	"time"
 
@@ -12,7 +13,7 @@ func CreateJobs(db *gorm.DB, osuSvc *osuservices.OsuService) {
 	stopChanRetrieveScores := make(chan struct{})
 	stopChanFilter := make(chan struct{}, 2000)
 	stopChanCreateScores := make(chan struct{}, 2000)
-	filterChan := make(chan models.OsuScore, 2000)
+	filterChan := make(chan osuModels.ScoreResponse, 2000)
 	scoresChan := make(chan models.Score, 100)
 
 	RetrieveScores(20*time.Second, stopChanRetrieveScores, filterChan, osuSvc)

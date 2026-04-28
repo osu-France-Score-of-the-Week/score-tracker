@@ -2,6 +2,7 @@ package jobs
 
 import (
 	"score-tracker/models"
+	osuModels "score-tracker/models/osu"
 	"score-tracker/osuservices"
 	"score-tracker/repositories"
 	"time"
@@ -9,7 +10,7 @@ import (
 	"gorm.io/gorm"
 )
 
-func FilterScores(stopChan <-chan struct{}, filterChan <-chan models.OsuScore, scoresChan chan<- models.Score, db *gorm.DB, osuSvc *osuservices.OsuService) {
+func FilterScores(stopChan <-chan struct{}, filterChan <-chan osuModels.ScoreResponse, scoresChan chan<- models.Score, db *gorm.DB, osuSvc *osuservices.OsuService) {
 	playerRepo := repositories.NewPlayerRepository(db)
 
 	batch := make([]models.Score, 0, 50)
@@ -46,7 +47,8 @@ func checkPlayersFromScores(scores []models.Score, scoresChan chan<- models.Scor
 		playerIds = append(playerIds, score.PlayerID)
 	}
 
-	players, err := osuSvc.GetPlayers(playerIds)
+	request := osuModels.UsersRequest{IDs: playerIds}
+	players, err := osuSvc.GetPlayers(request)
 	if err != nil {
 		return
 	}
@@ -72,17 +74,17 @@ func checkPlayersFromScores(scores []models.Score, scoresChan chan<- models.Scor
 	}
 }
 
-type PlayerFilter func(player models.User) bool
+type PlayerFilter func(player osuModels.UserResponse) bool
 
-func isFrench(player models.User) bool {
+func isFrench(player osuModels.UserResponse) bool {
 	return player.Country == "FR"
 }
 
-func isTop10k(player models.User) bool {
+func isTop10k(player osuModels.UserResponse) bool {
 	return player.Statistics.GlobalRank <= 10000 && player.Statistics.GlobalRank > 0
 }
 
-func applyFilters(player models.User, filters []PlayerFilter) bool {
+func applyFilters(player osuModels.UserResponse, filters []PlayerFilter) bool {
 	for _, filter := range filters {
 		if !filter(player) {
 			return false

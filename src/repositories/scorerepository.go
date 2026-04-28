@@ -94,7 +94,7 @@ func (r *ScoreRepository) GetScores(cursor string, sort string, start_date strin
 			}
 
 			query = query.Where(
-				"ended_at < ? OR (ended_at = ? AND id < ?)",
+				"ended_at > ? OR (ended_at = ? AND id > ?)",
 				decodedCursor.EndedAt,
 				decodedCursor.EndedAt,
 				decodedCursor.ID,

@@ -1,5 +1,7 @@
 package models
 
+import "score-tracker/models/osu"
+
 type Player struct {
 	ID         uint `gorm:"primaryKey"`
 	Username   string
@@ -7,7 +9,7 @@ type Player struct {
 	Pp         float64
 }
 
-func MapOsuUserToModel(u User) Player {
+func MapOsuUserToModel(u osu.UserResponse) Player {
 	return Player{
 		ID:         u.ID,
 		Username:   u.Username,

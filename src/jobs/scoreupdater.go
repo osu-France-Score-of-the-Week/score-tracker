@@ -2,12 +2,12 @@ package jobs
 
 import (
 	"fmt"
-	"score-tracker/models"
+	osuModels "score-tracker/models/osu"
 	"score-tracker/osuservices"
 	"time"
 )
 
-func RetrieveScores(interval time.Duration, stopChan <-chan struct{}, filterChan chan<- models.OsuScore, osuSvc *osuservices.OsuService) {
+func RetrieveScores(interval time.Duration, stopChan <-chan struct{}, filterChan chan<- osuModels.ScoreResponse, osuSvc *osuservices.OsuService) {
 
 	go func() {
 		ticker := time.NewTicker(interval)
@@ -28,11 +28,6 @@ func RetrieveScores(interval time.Duration, stopChan <-chan struct{}, filterChan
 				}
 
 				cursor = recentScores.Cursor
-
-				if err != nil {
-					fmt.Println("Error saving cursor to database:", err)
-					return
-				}
 
 				fmt.Println("new cursor:", recentScores.Cursor)
 
