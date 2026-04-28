@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"math"
 	"score-tracker/models"
+	"score-tracker/models/responses"
 	"strconv"
 	"time"
 
@@ -41,10 +42,10 @@ func (r *ScoreRepository) Create(score *models.Score) error {
 	return nil
 }
 
-func (r *ScoreRepository) GetScores(cursor string, sort string, start_date string, end_date string) (models.ScoreWithAttributesCursorResponse, error) {
+func (r *ScoreRepository) GetScores(cursor string, sort string, start_date string, end_date string) (responses.ScoreCursor, error) {
 	const limit = 50
 
-	var scores []models.ScoreWithAttributes
+	var scores []responses.ScoreWithAttributes
 	query := r.db.Model(&models.Score{}).Preload("Beatmap").Preload("Beatmap.Beatmapset").Preload("Player").Limit(limit)
 
 	switch sort {
@@ -54,7 +55,7 @@ func (r *ScoreRepository) GetScores(cursor string, sort string, start_date strin
 		if start_date != "" {
 			startTime, err := time.Parse("2006-01-02", start_date)
 			if err != nil {
-				return models.ScoreWithAttributesCursorResponse{}, fmt.Errorf("invalid from date: %w", err)
+				return responses.ScoreCursor{}, fmt.Errorf("invalid from date: %w", err)
 			}
 			query = query.Where("ended_at >= ?", startTime.Unix())
 		}
@@ -62,7 +63,7 @@ func (r *ScoreRepository) GetScores(cursor string, sort string, start_date strin
 		if end_date != "" {
 			endTime, err := time.Parse("2006-01-02", end_date)
 			if err != nil {
-				return models.ScoreWithAttributesCursorResponse{}, fmt.Errorf("invalid to date: %w", err)
+				return responses.ScoreCursor{}, fmt.Errorf("invalid to date: %w", err)
 			}
 			endOfDay := endTime.Add(23*time.Hour + 59*time.Minute + 59*time.Second)
 			query = query.Where("ended_at <= ?", endOfDay.Unix())
@@ -72,7 +73,7 @@ func (r *ScoreRepository) GetScores(cursor string, sort string, start_date strin
 		if cursor != "" {
 			decodedCursor, err := decodeBestScoresCursor(cursor)
 			if err != nil {
-				return models.ScoreWithAttributesCursorResponse{}, err
+				return responses.ScoreCursor{}, err
 			}
 
 			query = query.Where(
@@ -90,7 +91,7 @@ func (r *ScoreRepository) GetScores(cursor string, sort string, start_date strin
 		if cursor != "" {
 			decodedCursor, err := decodeRecentScoresCursor(cursor)
 			if err != nil {
-				return models.ScoreWithAttributesCursorResponse{}, err
+				return responses.ScoreCursor{}, err
 			}
 
 			query = query.Where(
@@ -103,7 +104,7 @@ func (r *ScoreRepository) GetScores(cursor string, sort string, start_date strin
 	}
 
 	if err := query.Find(&scores).Error; err != nil {
-		return models.ScoreWithAttributesCursorResponse{}, err
+		return responses.ScoreCursor{}, err
 	}
 
 	hasNextBest := sort == "best" && len(scores) > limit
@@ -115,13 +116,13 @@ func (r *ScoreRepository) GetScores(cursor string, sort string, start_date strin
 	if sort == "recent" && len(scores) > 0 {
 		encodedCursor, err := encodeRecentScoresCursor(scores[len(scores)-1])
 		if err != nil {
-			return models.ScoreWithAttributesCursorResponse{}, err
+			return responses.ScoreCursor{}, err
 		}
 		nextCursor = encodedCursor
 	} else if sort == "best" && hasNextBest {
 		encodedCursor, err := encodeBestScoresCursor(scores[len(scores)-1])
 		if err != nil {
-			return models.ScoreWithAttributesCursorResponse{}, err
+			return responses.ScoreCursor{}, err
 		}
 		nextCursor = encodedCursor
 	} else {
@@ -136,13 +137,13 @@ func (r *ScoreRepository) GetScores(cursor string, sort string, start_date strin
 		}
 	}
 
-	return models.ScoreWithAttributesCursorResponse{
+	return responses.ScoreCursor{
 		Scores: scores,
 		Cursor: nextCursor,
 	}, nil
 }
 
-func encodeBestScoresCursor(score models.ScoreWithAttributes) (string, error) {
+func encodeBestScoresCursor(score responses.ScoreWithAttributes) (string, error) {
 	payload := bestScoresCursor{
 		Pp:      score.Pp,
 		EndedAt: score.EndedAt,
@@ -175,7 +176,7 @@ func decodeBestScoresCursor(cursor string) (bestScoresCursor, error) {
 	return payload, nil
 }
 
-func encodeRecentScoresCursor(score models.ScoreWithAttributes) (string, error) {
+func encodeRecentScoresCursor(score responses.ScoreWithAttributes) (string, error) {
 	payload := recentScoresCursor{
 		EndedAt: score.EndedAt,
 		ID:      score.ID,
@@ -215,8 +216,8 @@ func decodeRecentScoresCursor(cursor string) (recentScoresCursor, error) {
 	return payload, nil
 }
 
-func (r *ScoreRepository) GetScoresByPlayer(playerID int, page int, sort string, from string, to string) (models.ScoreWithAttributesPageResponse, error) {
-	var scores []models.ScoreWithAttributes
+func (r *ScoreRepository) GetScoresByPlayer(playerID int, page int, sort string, from string, to string) (responses.ScorePage, error) {
+	var scores []responses.ScoreWithAttributes
 
 	if page < 1 {
 		page = 1
@@ -234,14 +235,14 @@ func (r *ScoreRepository) GetScoresByPlayer(playerID int, page int, sort string,
 	if from != "" {
 		fromTime, err := time.Parse("2006-01-02", from)
 		if err != nil {
-			return models.ScoreWithAttributesPageResponse{}, fmt.Errorf("invalid from date: %w", err)
+			return responses.ScorePage{}, fmt.Errorf("invalid from date: %w", err)
 		}
 		query = query.Where("ended_at >= ?", fromTime.Unix())
 	}
 	if to != "" {
 		toTime, err := time.Parse("2006-01-02", to)
 		if err != nil {
-			return models.ScoreWithAttributesPageResponse{}, fmt.Errorf("invalid to date: %w", err)
+			return responses.ScorePage{}, fmt.Errorf("invalid to date: %w", err)
 		}
 		endOfDay := toTime.Add(23*time.Hour + 59*time.Minute + 59*time.Second)
 		query = query.Where("ended_at <= ?", endOfDay.Unix())
@@ -249,7 +250,7 @@ func (r *ScoreRepository) GetScoresByPlayer(playerID int, page int, sort string,
 
 	var total int64
 	if err := query.Count(&total).Error; err != nil {
-		return models.ScoreWithAttributesPageResponse{}, err
+		return responses.ScorePage{}, err
 	}
 
 	switch sort {
@@ -262,7 +263,7 @@ func (r *ScoreRepository) GetScoresByPlayer(playerID int, page int, sort string,
 	}
 
 	if err := query.Limit(limit).Offset(offset).Find(&scores).Error; err != nil {
-		return models.ScoreWithAttributesPageResponse{}, err
+		return responses.ScorePage{}, err
 	}
 
 	// Load beatmap attributes for each score
@@ -278,15 +279,15 @@ func (r *ScoreRepository) GetScoresByPlayer(playerID int, page int, sort string,
 		totalPages = 1
 	}
 
-	return models.ScoreWithAttributesPageResponse{
+	return responses.ScorePage{
 		Scores:     scores,
 		Page:       page,
 		TotalPages: totalPages,
 	}, nil
 }
 
-func (r *ScoreRepository) GetScoresByBeatmap(beatmapID int, page int) (models.ScoreWithAttributesPageResponse, error) {
-	var scores []models.ScoreWithAttributes
+func (r *ScoreRepository) GetScoresByBeatmap(beatmapID int, page int) (responses.ScorePage, error) {
+	var scores []responses.ScoreWithAttributes
 
 	if page < 1 {
 		page = 1
@@ -299,15 +300,15 @@ func (r *ScoreRepository) GetScoresByBeatmap(beatmapID int, page int) (models.Sc
 
 	var total int64
 	if err := query.Count(&total).Error; err != nil {
-		return models.ScoreWithAttributesPageResponse{}, err
+		return responses.ScorePage{}, err
 	}
 
 	if err := query.Order("pp DESC").Order("ended_at DESC").Limit(limit).Offset(offset).Find(&scores).Error; err != nil {
-		return models.ScoreWithAttributesPageResponse{}, err
+		return responses.ScorePage{}, err
 	}
 
 	if len(scores) == 0 {
-		return models.ScoreWithAttributesPageResponse{}, gorm.ErrRecordNotFound
+		return responses.ScorePage{}, gorm.ErrRecordNotFound
 	}
 
 	// Load beatmap attributes for each score
@@ -323,7 +324,7 @@ func (r *ScoreRepository) GetScoresByBeatmap(beatmapID int, page int) (models.Sc
 		totalPages = 1
 	}
 
-	return models.ScoreWithAttributesPageResponse{
+	return responses.ScorePage{
 		Scores:     scores,
 		Page:       page,
 		TotalPages: totalPages,

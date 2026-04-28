@@ -17,17 +17,3 @@ func MapOsuUserToModel(u osu.UserResponse) Player {
 		Pp:         u.Statistics.Pp,
 	}
 }
-
-type PlayerResponse struct {
-	ID         uint
-	Username   string
-	GlobalRank uint
-	Pp         float64
-	ScoreCount uint `gorm:"-" json:"scoreCount"`
-}
-
-type PlayersPageResponse struct {
-	Players    []PlayerResponse `json:"players"`
-	Page       int              `json:"page"`
-	TotalPages int64            `json:"totalPages"`
-}
