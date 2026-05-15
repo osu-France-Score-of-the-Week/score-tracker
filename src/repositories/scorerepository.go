@@ -330,3 +330,18 @@ func (r *ScoreRepository) GetScoresByBeatmap(beatmapID int, page int) (responses
 		TotalPages: totalPages,
 	}, nil
 }
+
+func (r *ScoreRepository) GetOneScoreWithMissingAnalyses() (*models.Score, error) {
+	var score models.Score
+	if err := r.db.Model(&models.Score{}).
+		Where("analyzed_score IS NULL OR analyzed_score = 0").
+		Order("ended_at DESC").
+		First(&score).Error; err != nil {
+		return nil, err
+	}
+	return &score, nil
+}
+
+func (r *ScoreRepository) UpdateScore(score models.Score) error {
+	return r.db.Save(&score).Error
+}

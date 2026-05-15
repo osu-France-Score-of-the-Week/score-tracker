@@ -24,22 +24,21 @@ func CreateAnalyzeScores(scoresChan chan<- models.Score, analyzeChan <-chan mode
 		for {
 			select {
 			case score := <-analyzeChan:
-				log.Printf("[analyze] score=%d player=%d beatmap=%d acc=%.6f pp=%.2f mods=%v stats=%v", score.ID, score.PlayerID, score.BeatmapID, score.Accuracy, score.Pp, score.Mods, score.Statistics)
+				// log.Printf("[analyze] score=%d player=%d beatmap=%d acc=%.6f pp=%.2f mods=%v stats=%v", score.ID, score.PlayerID, score.BeatmapID, score.Accuracy, score.Pp, score.Mods, score.Statistics)
 				beatmap, attributes, err := UpdateBeatmap(score.BeatmapID, score.Mods, beatmapRepo, beatmapsetRepo, beatmapAttributes, osuSvc)
 				if err != nil {
-					log.Printf("[analyze] update beatmap failed beatmap=%d err=%v", score.BeatmapID, err)
+					// log.Printf("[analyze] update beatmap failed beatmap=%d err=%v", score.BeatmapID, err)
 					continue
 				}
-				log.Printf("[analyze] beatmap=%d cs=%.2f od=%.2f ar=%.2f version=%q attrs_star=%.3f attrs_max_combo=%d", beatmap.ID, beatmap.CS, beatmap.OD, beatmap.AR, beatmap.Version, attributes.StarRating, attributes.MaxCombo)
+				// log.Printf("[analyze] beatmap=%d cs=%.2f od=%.2f ar=%.2f version=%q attrs_star=%.3f attrs_max_combo=%d", beatmap.ID, beatmap.CS, beatmap.OD, beatmap.AR, beatmap.Version, attributes.StarRating, attributes.MaxCombo)
 
 				result, err := RequestAnalyzeService(score, beatmap, attributes)
 				if err != nil {
-					log.Printf("[analyze] request failed score=%d beatmap=%d err=%v", score.ID, score.BeatmapID, err)
-					continue
+					// log.Printf("[analyze] request failed score=%d beatmap=%d err=%v", score.ID, score.BeatmapID, err)
 				}
 
 				score.AnalyzedScore = result
-				log.Printf("[analyze] score=%d result=%.6f", score.ID, result)
+				// log.Printf("[analyze] score=%d result=%.6f", score.ID, result)
 
 				scoresChan <- score
 			case <-stopChanAnalyzeScores:
@@ -105,7 +104,7 @@ func RequestAnalyzeService(
 	return result, nil
 }
 
-func UpdateBeatmap(beatmapID uint, mods models.Mods, beatmapRepo *repositories.BeatmapRepository, beatmapsetRepo *repositories.BeatmapsetRepository, beatmapAttributes *repositories.BeatmapAttributesRepository, osuSvc *osuservices.OsuService) (models.Beatmap, models.BeatmapAttributes, error) {
+func UpdateBeatmap(beatmapID uint, mods models.Mods, beatmapRepo *repositories.BeatmapRepository, beatmapsetRepo *repositories.BeatmapsetRepository, beatmapAttributesRepo *repositories.BeatmapAttributesRepository, osuSvc *osuservices.OsuService) (models.Beatmap, models.BeatmapAttributes, error) {
 	osuBeatmap, err := osuSvc.GetBeatmap(beatmapID)
 	if err != nil {
 		return models.Beatmap{}, models.BeatmapAttributes{}, err
@@ -127,7 +126,7 @@ func UpdateBeatmap(beatmapID uint, mods models.Mods, beatmapRepo *repositories.B
 	}
 
 	attributes := models.BeatmapAttributes{
-		BeatmapID:                 beatmapID,
+		BeatmapID:                 beatmap.ID,
 		Mods:                      mods,
 		StarRating:                osuAttributes.Attributes.StarRating,
 		MaxCombo:                  osuAttributes.Attributes.MaxCombo,
@@ -140,11 +139,7 @@ func UpdateBeatmap(beatmapID uint, mods models.Mods, beatmapRepo *repositories.B
 		SpeedDifficultStrainCount: osuAttributes.Attributes.SpeedDifficultStrainCount,
 	}
 
-	_, err = beatmapAttributes.GetByBeatmapModsCombination(beatmapID, mods)
-	if err != nil {
-		if err == gorm.ErrRecordNotFound {
-			return beatmap, attributes, beatmapAttributes.Create(&attributes)
-		}
+	if err := beatmapAttributesRepo.Upsert(&attributes); err != nil {
 		return models.Beatmap{}, models.BeatmapAttributes{}, err
 	}
 

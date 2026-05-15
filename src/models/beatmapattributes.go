@@ -4,11 +4,11 @@ type BeatmapAttributes struct {
 	ID                        uint `gorm:"primaryKey;column:id" json:"id"`
 	BeatmapID                 uint `gorm:"uniqueIndex:idx_beatmap_mods;column:beatmap_id" json:"beatmap_id"`
 	Beatmap                   Beatmap
-	Mods                      Mods `gorm:"type:jsonb;uniqueIndex:idx_beatmap_mods" json:"mods"`
+	Mods                      Mods    `gorm:"type:jsonb;uniqueIndex:idx_beatmap_mods" json:"mods"`
 	StarRating                float64 `json:"star_rating"`
 	MaxCombo                  uint    `json:"max_combo"`
 	AimDifficulty             float64 `json:"aim_difficulty"`
-	AimDifficultSliderCount    float64 `json:"aim_difficult_slider_count"`
+	AimDifficultSliderCount   float64 `json:"aim_difficult_slider_count"`
 	SpeedDifficulty           float64 `json:"speed_difficulty"`
 	SpeedNoteCount            float64 `json:"speed_note_count"`
 	SliderFactor              float64 `json:"slider_factor"`

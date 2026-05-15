@@ -3,6 +3,7 @@ package osuservices
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"score-tracker/models"
 	osuModels "score-tracker/models/osu"
@@ -29,6 +30,11 @@ func (s *OsuService) GetBeatmap(beatmapId uint) (osuModels.BeatmapResponse, erro
 		return osuModels.BeatmapResponse{}, err
 	}
 	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return osuModels.BeatmapResponse{}, fmt.Errorf("osu beatmap API returned status %d: %s", resp.StatusCode, string(body))
+	}
 
 	var beatmap osuModels.BeatmapResponse
 	if err := json.NewDecoder(resp.Body).Decode(&beatmap); err != nil {
@@ -72,6 +78,11 @@ func (s *OsuService) GetBeatmapAttribute(beatmapId uint, mods models.Mods) (osuM
 		return osuModels.BeatmapAttributesResponse{}, err
 	}
 	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return osuModels.BeatmapAttributesResponse{}, fmt.Errorf("osu beatmap attributes API returned status %d: %s", resp.StatusCode, string(body))
+	}
 
 	var attributes osuModels.BeatmapAttributesResponse
 	if err := json.NewDecoder(resp.Body).Decode(&attributes); err != nil {
