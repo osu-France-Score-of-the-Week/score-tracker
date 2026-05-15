@@ -1,4 +1,4 @@
-name: 'go-api'
+name: "go-api"
 
 services:
   score-tracker-database:
@@ -47,6 +47,8 @@ services:
       - score-tracker-database
     networks:
       - score-tracker-network
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
 
 volumes:
   score-tracker-database:

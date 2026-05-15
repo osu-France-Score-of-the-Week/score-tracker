@@ -7,19 +7,20 @@ import (
 )
 
 type Score struct {
-	ID         uint `gorm:"primaryKey"`
-	Accuracy   float64
-	BeatmapID  uint
-	Beatmap    Beatmap
-	EndedAt    int64
-	HasReplay  bool
-	MaxCombo   uint
-	Mods       Mods `gorm:"type:jsonb"`
-	Pp         float64
-	Rank       string
-	Statistics ScoreStatistics `gorm:"type:jsonb"`
-	PlayerID   uint
-	Player     Player
+	ID            uint `gorm:"primaryKey"`
+	Accuracy      float64
+	BeatmapID     uint
+	Beatmap       Beatmap
+	EndedAt       int64
+	HasReplay     bool
+	MaxCombo      uint
+	Mods          Mods `gorm:"type:jsonb"`
+	Pp            float64
+	Rank          string
+	Statistics    ScoreStatistics `gorm:"type:jsonb"`
+	PlayerID      uint
+	Player        Player
+	AnalyzedScore float64
 }
 
 type ScoreStatistics map[string]int

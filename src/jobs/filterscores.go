@@ -1,6 +1,7 @@
 package jobs
 
 import (
+	"fmt"
 	"score-tracker/models"
 	osuModels "score-tracker/models/osu"
 	"score-tracker/osuservices"
@@ -10,7 +11,7 @@ import (
 	"gorm.io/gorm"
 )
 
-func FilterScores(stopChan <-chan struct{}, filterChan <-chan osuModels.ScoreResponse, scoresChan chan<- models.Score, db *gorm.DB, osuSvc *osuservices.OsuService) {
+func FilterScores(stopChan <-chan struct{}, filterChan <-chan osuModels.ScoreResponse, analyzeChan chan<- models.Score, db *gorm.DB, osuSvc *osuservices.OsuService) {
 	playerRepo := repositories.NewPlayerRepository(db)
 
 	batch := make([]models.Score, 0, 50)
@@ -27,8 +28,8 @@ func FilterScores(stopChan <-chan struct{}, filterChan <-chan osuModels.ScoreRes
 				batch = append(batch, mappedScore)
 
 				if len(batch) == 50 {
-					//scoresChan <- mappedScore
-					checkPlayersFromScores(batch, scoresChan, playerRepo, osuSvc)
+					//analyzeChan <- mappedScore
+					checkPlayersFromScores(batch, analyzeChan, playerRepo, osuSvc)
 					time.Sleep(3000 * time.Millisecond)
 					batch = batch[:0] // Clear the batch
 				}
@@ -40,7 +41,7 @@ func FilterScores(stopChan <-chan struct{}, filterChan <-chan osuModels.ScoreRes
 	}()
 }
 
-func checkPlayersFromScores(scores []models.Score, scoresChan chan<- models.Score, playerRepo *repositories.PlayerRepository, osuSvc *osuservices.OsuService) {
+func checkPlayersFromScores(scores []models.Score, analyzeChan chan<- models.Score, playerRepo *repositories.PlayerRepository, osuSvc *osuservices.OsuService) {
 
 	playerIds := make([]uint, 0, len(scores))
 	for _, score := range scores {
@@ -67,7 +68,8 @@ func checkPlayersFromScores(scores []models.Score, scoresChan chan<- models.Scor
 
 			for _, score := range scores {
 				if score.PlayerID == player.ID {
-					scoresChan <- score
+					fmt.Println("Found score for player", player.ID)
+					analyzeChan <- score
 				}
 			}
 		}

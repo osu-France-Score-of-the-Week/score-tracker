@@ -7,6 +7,10 @@ type Beatmap struct {
 	BeatmapsetID     uint
 	Beatmapset       Beatmapset
 	DifficultyRating float64
+	Status           string  `json:"status"`
+	CS               float64 `json:"cs"`
+	OD               float64 `json:"accuracy"`
+	AR               float64 `json:"ar"`
 	Version          string
 }
 
@@ -16,6 +20,10 @@ func MapOsuBeatmapToModel(b osu.BeatmapResponse) Beatmap {
 		BeatmapsetID:     b.Beatmapset.ID,
 		Beatmapset:       MapOsuBeatmapsetToModel(b.Beatmapset),
 		DifficultyRating: b.DifficultyRating,
+		Status:           b.Status,
+		CS:               b.CS,
+		OD:               b.OD,
+		AR:               b.AR,
 		Version:          b.Version,
 	}
 }
