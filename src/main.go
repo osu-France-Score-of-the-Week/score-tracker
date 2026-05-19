@@ -18,6 +18,11 @@ func main() {
 		log.Fatal("Failed to connect to database:", err)
 	}
 
+	redisClient := database.NewRedisClient()
+	if _, err := redisClient.ConnectRedis(); err != nil {
+		log.Fatal("Failed to connect to Redis:", err)
+	}
+
 	if err := database.DB.AutoMigrate(
 		&models.Player{},
 		&models.Beatmapset{},
@@ -41,7 +46,7 @@ func main() {
 
 	osuSvc := osuservices.NewOsuService(database.DB)
 
-	jobs.CreateJobs(database.DB, osuSvc)
+	jobs.CreateJobs(database.DB, osuSvc, redisClient)
 
 	v1 := r.Group("/api/v1")
 	routes.SetupScoreRoutes(v1.Group("/scores"))

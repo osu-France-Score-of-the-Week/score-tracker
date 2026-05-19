@@ -1,6 +1,7 @@
 package jobs
 
 import (
+	"score-tracker/database"
 	"score-tracker/models"
 	osuModels "score-tracker/models/osu"
 	"score-tracker/osuservices"
@@ -9,7 +10,8 @@ import (
 	"gorm.io/gorm"
 )
 
-func CreateJobs(db *gorm.DB, osuSvc *osuservices.OsuService) {
+// TODO: Refactor everything, change structure
+func CreateJobs(db *gorm.DB, osuSvc *osuservices.OsuService, redisClient *database.RedisClient) {
 	stopChanRetrieveScores := make(chan struct{})
 	stopChanFilter := make(chan struct{})
 	stopChanAnalyzeScores := make(chan struct{})
@@ -20,8 +22,8 @@ func CreateJobs(db *gorm.DB, osuSvc *osuservices.OsuService) {
 	scoresChan := make(chan models.Score, 100)
 
 	RetrieveScores(20*time.Second, stopChanRetrieveScores, filterChan, osuSvc)
-	FilterScores(stopChanFilter, filterChan, analyzeChan, db, osuSvc)
+	FilterScores(stopChanFilter, filterChan, analyzeChan, db, osuSvc, redisClient)
 	CreateAnalyzeScores(scoresChan, analyzeChan, stopChanAnalyzeScores, db, osuSvc)
 	CreateScores(scoresChan, stopChanCreateScores, db, osuSvc)
-	RecomputeScores(2*time.Second, stopChanRecomputeScores, db, osuSvc)
+	RecomputeScores(10*time.Second, stopChanRecomputeScores, db, osuSvc)
 }

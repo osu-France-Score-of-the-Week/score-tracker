@@ -7,6 +7,7 @@ type Player struct {
 	Username   string
 	GlobalRank uint
 	Pp         float64
+	Country    string
 }
 
 func MapOsuUserToModel(u osu.UserResponse) Player {
@@ -15,5 +16,6 @@ func MapOsuUserToModel(u osu.UserResponse) Player {
 		Username:   u.Username,
 		GlobalRank: u.Statistics.GlobalRank,
 		Pp:         u.Statistics.Pp,
+		Country:    u.Country,
 	}
 }
