@@ -16,6 +16,7 @@ func FilterScores(stopChan <-chan struct{}, filterChan <-chan osuModels.ScoreRes
 	playerRepo := repositories.NewPlayerRepository(db)
 
 	batch := make([]models.Score, 0, 50)
+	queuedPlayers := make(map[uint]struct{})
 
 	go func() {
 		for {
@@ -30,19 +31,24 @@ func FilterScores(stopChan <-chan struct{}, filterChan <-chan osuModels.ScoreRes
 					continue
 				} else if ok {
 					if applyFilters(player, []PlayerFilter{isFrench, isTop10k}) {
-
-						if mappedScore.PlayerID == player.ID {
-							fmt.Println("Found score for player", player.ID)
-							analyzeChan <- mappedScore
-						}
+						fmt.Println("Found score for player", player.ID)
+						analyzeChan <- mappedScore
 					}
 					continue
 				}
 
+				if _, alreadyQueued := queuedPlayers[mappedScore.PlayerID]; alreadyQueued {
+					continue
+				}
+
+				queuedPlayers[mappedScore.PlayerID] = struct{}{}
 				batch = append(batch, mappedScore)
 
 				if len(batch) == 50 {
 					checkPlayersFromScores(batch, analyzeChan, playerRepo, osuSvc, redisClient)
+					for _, score := range batch {
+						delete(queuedPlayers, score.PlayerID)
+					}
 					time.Sleep(3000 * time.Millisecond)
 					batch = batch[:0]
 				}

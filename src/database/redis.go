@@ -3,10 +3,11 @@ package database
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"errors"
-	"score-tracker/models"
+	"fmt"
 	"time"
+
+	"score-tracker/models"
 
 	"github.com/redis/go-redis/v9"
 )
