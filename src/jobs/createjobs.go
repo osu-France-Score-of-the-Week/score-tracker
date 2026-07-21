@@ -16,7 +16,6 @@ func CreateJobs(db *gorm.DB, osuSvc *osuservices.OsuService, redisClient *databa
 	stopChanFilter := make(chan struct{})
 	stopChanAnalyzeScores := make(chan struct{})
 	stopChanCreateScores := make(chan struct{})
-	stopChanRecomputeScores := make(chan struct{})
 	filterChan := make(chan osuModels.ScoreResponse, 2000)
 	analyzeChan := make(chan models.Score, 100)
 	scoresChan := make(chan models.Score, 100)
@@ -25,5 +24,7 @@ func CreateJobs(db *gorm.DB, osuSvc *osuservices.OsuService, redisClient *databa
 	FilterScores(stopChanFilter, filterChan, analyzeChan, db, osuSvc, redisClient)
 	CreateAnalyzeScores(scoresChan, analyzeChan, stopChanAnalyzeScores, db, osuSvc)
 	CreateScores(scoresChan, stopChanCreateScores, db, osuSvc)
-	RecomputeScores(10*time.Second, stopChanRecomputeScores, db, osuSvc)
+	// RecomputeScores disabled: it only exists to retry the analyze service call,
+	// which is currently skipped, so it would otherwise loop forever re-fetching
+	// the same beatmaps from the osu API. Re-enable once the analyze layer is back.
 }

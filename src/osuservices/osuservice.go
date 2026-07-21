@@ -1,11 +1,20 @@
 package osuservices
 
-import "gorm.io/gorm"
+import (
+	"score-tracker/queue"
+	"time"
+
+	"gorm.io/gorm"
+)
 
 type OsuService struct {
-	db *gorm.DB
+	db    *gorm.DB
+	queue *queue.RequestQueue
 }
 
 func NewOsuService(db *gorm.DB) *OsuService {
-	return &OsuService{db: db}
+	return &OsuService{
+		db:    db,
+		queue: queue.NewQueue(2 * time.Second),
+	}
 }

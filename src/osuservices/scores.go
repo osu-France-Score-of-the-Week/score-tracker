@@ -1,52 +1,32 @@
 package osuservices
 
 import (
-	"encoding/json"
 	"fmt"
-	"io"
-	"net/http"
+	"net/url"
 	osuModels "score-tracker/models/osu"
+	"score-tracker/queue"
 )
 
 func (s *OsuService) GetRecentScores(cursor string) (osuModels.RecentScoresResponse, error) {
-	client := &http.Client{}
-
-	req, err := http.NewRequest("GET", "https://osu.ppy.sh/api/v2/scores", nil)
-	if err != nil {
-		return osuModels.RecentScoresResponse{}, err
-	}
-
-	q := req.URL.Query()
-	q.Add("ruleset", "osu")
-	if cursor != "" {
-		q.Add("cursor_string", cursor)
-	}
-	req.URL.RawQuery = q.Encode()
-
 	token, err := s.getValidOsuToken()
 	if err != nil {
 		return osuModels.RecentScoresResponse{}, err
 	}
 
-	req.Header.Add("Authorization", "Bearer "+token)
+	q := url.Values{}
+	q.Set("ruleset", "osu")
+	if cursor != "" {
+		q.Set("cursor_string", cursor)
+	}
 
-	resp, err := client.Do(req)
+	recentScores, err := queue.ExecuteJSON[osuModels.RecentScoresResponse](s.queue, queue.Request{
+		Method: "GET",
+		URL:    "https://osu.ppy.sh/api/v2/scores?" + q.Encode(),
+		Headers: map[string]string{
+			"Authorization": "Bearer " + token,
+		},
+	})
 	if err != nil {
-		return osuModels.RecentScoresResponse{}, err
-	}
-	defer resp.Body.Close()
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return osuModels.RecentScoresResponse{}, err
-	}
-
-	if resp.StatusCode != http.StatusOK {
-		return osuModels.RecentScoresResponse{}, fmt.Errorf("osu API error: %s", string(body))
-	}
-
-	var recentScores osuModels.RecentScoresResponse
-	if err := json.Unmarshal(body, &recentScores); err != nil {
 		return osuModels.RecentScoresResponse{}, err
 	}
 

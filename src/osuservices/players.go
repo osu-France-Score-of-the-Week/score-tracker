@@ -1,61 +1,28 @@
 package osuservices
 
 import (
-	"encoding/json"
 	"fmt"
-	"io"
-	"net/http"
+	"net/url"
 	osuModels "score-tracker/models/osu"
+	"score-tracker/queue"
 )
 
 func (s *OsuService) GetPlayers(request osuModels.UsersRequest) (osuModels.UsersResponse, error) {
-	client := &http.Client{}
-
-	req, err := http.NewRequest("GET", "https://osu.ppy.sh/api/v2/users", nil)
-	if err != nil {
-		return osuModels.UsersResponse{}, err
-	}
-
-	for _, playerId := range request.IDs {
-		q := req.URL.Query()
-		q.Add("ids[]", fmt.Sprintf("%d", playerId))
-		req.URL.RawQuery = q.Encode()
-	}
-
 	token, err := s.getValidOsuToken()
 	if err != nil {
 		return osuModels.UsersResponse{}, err
 	}
 
-	req.Header.Add("Authorization", "Bearer "+token)
-
-	resp, err := client.Do(req)
-	if err != nil {
-		return osuModels.UsersResponse{}, err
+	q := url.Values{}
+	for _, playerId := range request.IDs {
+		q.Add("ids[]", fmt.Sprintf("%d", playerId))
 	}
 
-	defer func(Body io.ReadCloser) {
-		err := Body.Close()
-		if err != nil {
-			fmt.Printf("Error closing response body: %v\n", err)
-		}
-	}(resp.Body)
-
-	if resp.StatusCode != http.StatusOK {
-		return osuModels.UsersResponse{}, fmt.Errorf("osu API error: %s", resp.Status)
-	}
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return osuModels.UsersResponse{}, err
-	}
-
-	var players osuModels.UsersResponse
-	if err := json.Unmarshal(body, &players); err != nil {
-		return osuModels.UsersResponse{}, err
-	}
-
-	//fmt.Printf("Fetched %d players from osu API\n", len(players.Users))
-
-	return players, nil
+	return queue.ExecuteJSON[osuModels.UsersResponse](s.queue, queue.Request{
+		Method: "GET",
+		URL:    "https://osu.ppy.sh/api/v2/users?" + q.Encode(),
+		Headers: map[string]string{
+			"Authorization": "Bearer " + token,
+		},
+	})
 }

@@ -3,49 +3,31 @@ package osuservices
 import (
 	"encoding/json"
 	"fmt"
-	"io"
-	"net/http"
 	"score-tracker/models"
 	osuModels "score-tracker/models/osu"
-	"strings"
+	"score-tracker/queue"
 )
 
 func (s *OsuService) GetBeatmap(beatmapId uint) (osuModels.BeatmapResponse, error) {
-	client := &http.Client{}
-
-	req, err := http.NewRequest("GET", fmt.Sprintf("https://osu.ppy.sh/api/v2/beatmaps/%d", beatmapId), nil)
-	if err != nil {
-		return osuModels.BeatmapResponse{}, err
-	}
-
 	token, err := s.getValidOsuToken()
 	if err != nil {
 		return osuModels.BeatmapResponse{}, err
 	}
 
-	req.Header.Add("Authorization", "Bearer "+token)
-
-	resp, err := client.Do(req)
-	if err != nil {
-		return osuModels.BeatmapResponse{}, err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return osuModels.BeatmapResponse{}, fmt.Errorf("osu beatmap API returned status %d: %s", resp.StatusCode, string(body))
-	}
-
-	var beatmap osuModels.BeatmapResponse
-	if err := json.NewDecoder(resp.Body).Decode(&beatmap); err != nil {
-		return osuModels.BeatmapResponse{}, err
-	}
-
-	return beatmap, nil
+	return queue.ExecuteJSON[osuModels.BeatmapResponse](s.queue, queue.Request{
+		Method: "GET",
+		URL:    fmt.Sprintf("https://osu.ppy.sh/api/v2/beatmaps/%d", beatmapId),
+		Headers: map[string]string{
+			"Authorization": "Bearer " + token,
+		},
+	})
 }
 
 func (s *OsuService) GetBeatmapAttribute(beatmapId uint, mods models.Mods) (osuModels.BeatmapAttributesResponse, error) {
-	client := &http.Client{}
+	token, err := s.getValidOsuToken()
+	if err != nil {
+		return osuModels.BeatmapAttributesResponse{}, err
+	}
 
 	request := osuModels.BeatmapAttributesRequest{Mods: []osuModels.ModRequest{}}
 	for _, mod := range mods {
@@ -55,39 +37,18 @@ func (s *OsuService) GetBeatmapAttribute(beatmapId uint, mods models.Mods) (osuM
 		})
 	}
 
-	bodyBytes, err := json.Marshal(request)
+	body, err := json.Marshal(request)
 	if err != nil {
 		return osuModels.BeatmapAttributesResponse{}, err
 	}
 
-	req, err := http.NewRequest("POST", fmt.Sprintf("https://osu.ppy.sh/api/v2/beatmaps/%d/attributes", beatmapId), strings.NewReader(string(bodyBytes)))
-	if err != nil {
-		return osuModels.BeatmapAttributesResponse{}, err
-	}
-
-	token, err := s.getValidOsuToken()
-	if err != nil {
-		return osuModels.BeatmapAttributesResponse{}, err
-	}
-
-	req.Header.Add("Authorization", "Bearer "+token)
-	req.Header.Set("Content-Type", "application/json")
-
-	resp, err := client.Do(req)
-	if err != nil {
-		return osuModels.BeatmapAttributesResponse{}, err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return osuModels.BeatmapAttributesResponse{}, fmt.Errorf("osu beatmap attributes API returned status %d: %s", resp.StatusCode, string(body))
-	}
-
-	var attributes osuModels.BeatmapAttributesResponse
-	if err := json.NewDecoder(resp.Body).Decode(&attributes); err != nil {
-		return osuModels.BeatmapAttributesResponse{}, err
-	}
-
-	return attributes, nil
+	return queue.ExecuteJSON[osuModels.BeatmapAttributesResponse](s.queue, queue.Request{
+		Method: "POST",
+		URL:    fmt.Sprintf("https://osu.ppy.sh/api/v2/beatmaps/%d/attributes", beatmapId),
+		Body:   body,
+		Headers: map[string]string{
+			"Authorization": "Bearer " + token,
+			"Content-Type":  "application/json",
+		},
+	})
 }

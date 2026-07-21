@@ -25,21 +25,14 @@ func CreateAnalyzeScores(scoresChan chan<- models.Score, analyzeChan <-chan mode
 			select {
 			case score := <-analyzeChan:
 				// log.Printf("[analyze] score=%d player=%d beatmap=%d acc=%.6f pp=%.2f mods=%v stats=%v", score.ID, score.PlayerID, score.BeatmapID, score.Accuracy, score.Pp, score.Mods, score.Statistics)
-				beatmap, attributes, err := UpdateBeatmap(score.BeatmapID, score.Mods, beatmapRepo, beatmapsetRepo, beatmapAttributes, osuSvc)
+				_, _, err := UpdateBeatmap(score.BeatmapID, score.Mods, beatmapRepo, beatmapsetRepo, beatmapAttributes, osuSvc)
 				if err != nil {
 					// log.Printf("[analyze] update beatmap failed beatmap=%d err=%v", score.BeatmapID, err)
 					continue
 				}
-				// log.Printf("[analyze] beatmap=%d cs=%.2f od=%.2f ar=%.2f version=%q attrs_star=%.3f attrs_max_combo=%d", beatmap.ID, beatmap.CS, beatmap.OD, beatmap.AR, beatmap.Version, attributes.StarRating, attributes.MaxCombo)
 
-				result, err := RequestAnalyzeService(score, beatmap, attributes)
-				if err != nil {
-					// log.Printf("[analyze] request failed score=%d beatmap=%d err=%v", score.ID, score.BeatmapID, err)
-				}
-
-				score.AnalyzedScore = result
-				// log.Printf("[analyze] score=%d result=%.6f", score.ID, result)
-
+				// Analyze service call skipped for now (layer is being removed), score
+				// is forwarded with AnalyzedScore left at its zero value.
 				scoresChan <- score
 			case <-stopChanAnalyzeScores:
 				return
